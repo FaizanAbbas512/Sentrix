@@ -74,7 +74,7 @@ def _mask_to_intervals(mask):
     return out
 
 
-def extract_one(model, path, classes, imgsz, conf, iou, tracker, stride=1):
+def extract_one(model, path, classes, imgsz, conf, iou, tracker, stride=1, device=None):
     """Return (n_frames, frames) for one video. frames = list[list[det dict]]."""
     import cv2
     cap = cv2.VideoCapture(path)
@@ -92,7 +92,7 @@ def extract_one(model, path, classes, imgsz, conf, iou, tracker, stride=1):
             continue
         res = model.track(frame, imgsz=imgsz, conf=conf, iou=iou,
                           persist=True, tracker=tracker, classes=classes,
-                          verbose=False)
+                          device=device, verbose=False)
         dets = []
         if res and res[0].boxes is not None and res[0].boxes.id is not None:
             b = res[0].boxes
@@ -141,8 +141,8 @@ def main():
 
     from ultralytics import YOLO
     model = YOLO(args.weights)
-    if args.device is not None:
-        model.to(args.device)
+    # NOTE: pass device to model.track() (it accepts '0', 'cpu', 'cuda:0');
+    # model.to('0') would fail -- torch wants 'cuda:0', not a bare index.
     # person + common bag classes (COCO) so the abandoned-object cue still works
     classes = [0, 24, 26, 28]
 
@@ -163,7 +163,7 @@ def main():
         fps_seen.append(vfps)
         print(f"  [{len(clips)+1}/{len(vids)}] {stem}  (fps~{vfps:.1f})")
         n, frames = extract_one(model, vp, classes, args.imgsz, args.conf,
-                                args.iou, args.tracker, args.stride)
+                                args.iou, args.tracker, args.stride, args.device)
         clips.append({
             "name": stem, "n_frames": n, "split": args.split,
             "gt": _load_gt(args.gt, stem, n), "frames": frames,

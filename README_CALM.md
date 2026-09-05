@@ -67,22 +67,33 @@ python -m calm.harness --synthetic --degrade   # adds pose degradation (tests M1
 
 ## Running it for real (the paper's experiments)
 
-### 1. Get skeletons
+### 1. Get skeletons — use the Colab notebook
 
-Pick benchmarks: **ShanghaiTech**, **NWPU-Campus**, **UBnormal**, **HR-Avenue**,
-**CHAD** (+ a **UCF-Crime** subset for the cross-domain drop). Extract 17-keypoint
-COCO poses once on Colab/Kaggle GPU and **cache them** — everything after is
-CPU-light. The bundled script does this and writes the schema directly:
+`colab/calm_vad_colab.ipynb` is the turnkey GPU step. **The dataset is
+downloaded into Colab's own ~100 GB scratch disk, not your Google Drive** — a
+40 GB benchmark never touches your 15 GB Drive; only the small pose JSON +
+report are saved to Drive at the end.
 
+1. Upload the notebook to https://colab.research.google.com, set `Runtime → T4 GPU`.
+2. Cell 2: set `REPO_URL` to your pushed GitHub repo (or upload a project zip).
+3. Cell 3: set **one** of `DIRECT_URL` / `GDRIVE_ID` / `KAGGLE_DS` to a dataset
+   link. The cell downloads, extracts, and auto-finds the videos + ground truth
+   (`.npy` masks, `.mat` pixel masks — converted — `.txt`, `.json`). You only
+   need the **testing** split; CALM-VAD trains nothing.
+4. Cell 4: extract poses on the GPU → `data/pose/<TAG>.json`.
+5. Cell 5: run the harness → the report. Cell 6: download `calm_<TAG>.zip`.
+
+Fastest path (**Cell 8**): if you grab **pre-extracted skeletons** from a
+pose-VAD repo (STG-NF, MoCoDAD release HR-ShanghaiTech / HR-Avenue skeletons +
+masks), you skip the video download *and* the GPU — just convert and run.
+
+Local fallback (small datasets only, slow on CPU):
 ```bash
-python -m calm.extract_poses \
-    --videos data/benchmarks/shanghaitech/testing/videos \
-    --gt     data/benchmarks/shanghaitech/testing/frame_masks \
-    --out    data/pose/shanghaitech.json --split test --device 0
+python -m calm.extract_poses --videos <dir> --gt <dir> \
+    --out data/pose/avenue.json --split test --device cpu --stride 2
 ```
-
-`--gt` accepts per-clip `*.npy` frame masks, `*.txt` (one `start end` per line),
-or `*.json` (`{"gt": [[s,e],...]}`), matched by filename stem. Run once per split.
+`--gt` accepts per-clip `*.npy` / `*.txt` (one `start end` per line) / `*.json`
+(`{"gt": [[s,e],...]}`), matched by filename stem.
 
 ### 2. Convert to the generic schema (once per benchmark)
 
