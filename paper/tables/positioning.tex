@@ -1,0 +1,31 @@
+% Capability matrix. cmark / pmark / xmark defined here for portability.
+\providecommand{\cmark}{\textbf{\textcolor{green!45!black}{\checkmark}}}
+\providecommand{\pmark}{\textcolor{orange!80!black}{$\sim$}}
+\providecommand{\xmark}{\textcolor{red!60!black}{$\times$}}
+\begin{table}[t]
+\centering
+\caption{Capability coverage. \cmark~delivered, \pmark~partial/adjacent,
+\xmark~absent. No prior row carries \cmark{} across the last four columns
+together.}
+\label{tab:positioning}
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.15}
+\footnotesize
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+System / line of work & \rotatebox{90}{interp.\ fusion} & \rotatebox{90}{calib.\ prob.}
+ & \rotatebox{90}{reliab.$\to$score} & \rotatebox{90}{alarm guarantee}
+ & \rotatebox{90}{deploy.\ protocol} & \rotatebox{90}{edge/CPU} \\
+\midrule
+Base pipeline (weighted sum)        & \pmark & \xmark & \xmark & \xmark & \xmark & \cmark \\
+Pose density \cite{stgnf2023,graphjigsaw2024} & \xmark & \xmark & \xmark & \xmark & \xmark & \pmark \\
+YOLO-pose + CLIP \cite{yoloposeclip2026}      & \xmark & \xmark & \xmark & \xmark & \xmark & \pmark \\
+VLM-explainable \cite{vera2025}               & \pmark & \xmark & \xmark & \xmark & \xmark & \xmark \\
+Fusion + SHAP \cite{deepusevision2025}        & \cmark & \xmark & \xmark & \xmark & \xmark & \xmark \\
+Reliab.\ prototype \cite{reliabilityproto2026}& \xmark & \pmark & \cmark & \xmark & \xmark & \pmark \\
+``AUC $\neq$ reliability'' \cite{benchmarkauc2026} & --- & \pmark & \xmark & \xmark & \cmark & --- \\
+Learn-then-Test \cite{angelopoulos2021ltt}    & --- & \pmark & \xmark & \cmark & \xmark & --- \\
+\textbf{CALM-VAD (ours)} & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark \\
+\bottomrule
+\end{tabular}
+\end{table}

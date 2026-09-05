@@ -1,0 +1,49 @@
+# ============================================================
+#  SENTRIX — Configuration
+#  Saari settings yahan se control hoti hain. Code touch karne
+#  ki zaroorat nahi — bas yeh values badlo.
+# ============================================================
+
+# ---- Video source ----
+# 0 = webcam | ya video file ka path do: "data/videos/test.mp4"
+source: 0
+
+# Frame ko itni width pe resize karo (speed ke liye). Height auto.
+frame_width:640      #960
+
+# ---- Detection model ----
+model:
+  weights: "yolo26n.pt"     # n=nano (fastest). s/m/l bhi use kar sakte ho
+  conf:0.5    #0.45                # is se kam confidence ignore
+  iou: 0.5
+  tracker: "bytetrack.yaml" # persistent IDs ke liye
+
+# COCO class IDs jo detect karne hain
+classes:
+  person: 0
+  objects:                  # "abandoned" detection ke liye
+    backpack: 24
+    handbag: 26
+    suitcase: 28
+
+# ---- Loitering analyzer ----
+loitering:
+  dwell_seconds: 15         # itni der ek jagah = loitering
+  movement_tolerance: 60    # itne pixel se kam hile = "stationary"
+
+# ---- Abandoned object analyzer ----
+abandoned:
+  unattended_seconds: 12    # object akela itni der = abandoned
+  owner_radius: 150         # is radius mein person ho to "attended"
+  movement_tolerance: 40    # object itna hile to "moving" (abandoned nahi)
+
+# ---- Crowd analyzer ----
+crowd:
+  threshold: 8              # itne se zyada log = crowd alert
+
+# ---- Alerts ----
+alerts:
+  cooldown_seconds: 10      # same alert dobara itni der baad
+  save_snapshots: true      # alert pe frame save karo (paper ke liye useful)
+  log_file: "data/logs/alerts.csv"
+  snapshot_dir: "data/logs/snapshots"

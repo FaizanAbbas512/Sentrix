@@ -1,0 +1,22 @@
+% From results/calm_report_<dataset>.json -> "calibration".
+\begin{table}[t]
+\centering
+\caption{Calibration on the test split (\pend{dataset}). Raw = fused belief
+$\bel(\Anom)$; Cal.\ = after the M3 map. Lower is better.}
+\label{tab:calib}
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.15}
+\footnotesize
+\begin{tabular}{@{}lccc@{}}
+\toprule
+ & ECE & adaptive-ECE & Brier \\
+\midrule
+Raw belief (no M3)          & -- & -- & -- \\
++ temperature               & -- & -- & -- \\
++ Platt                     & -- & -- & -- \\
+\textbf{+ isotonic (M3)}   & -- & -- & -- \\
+\midrule
+B0 weighted sum, calibrated & -- & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table}

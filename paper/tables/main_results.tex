@@ -1,0 +1,27 @@
+% Populated from results/calm_report_<dataset>.json -> "streams".
+\begin{table}[t]
+\centering
+\caption{Detection and alarm load, mean over test clips (\pend{dataset}). FAPH
+= false alarms per hour of normal stream at the stated event recall. Lower FAPH
+and higher $\bar F_1$ are better.}
+\label{tab:main}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.15}
+\footnotesize
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Method & frame AUC & $\bar F_1$ & \multicolumn{3}{c}{FAPH @ recall} \\
+\cmidrule(l){4-6}
+ & & & $0.7$ & $0.8$ & $0.9$ \\
+\midrule
+B0 weighted sum (base)      & -- & -- & -- & -- & -- \\
+B1 logistic                 & -- & -- & -- & -- & -- \\
+B2 gradient-boosted         & -- & -- & -- & -- & -- \\
+B3 pose density \cite{stgnf2023} & -- & -- & -- & -- & -- \\
+\midrule
+CALM-VAD $-$M1              & -- & -- & -- & -- & -- \\
+CALM-VAD $-$M3              & -- & -- & -- & -- & -- \\
+\textbf{CALM-VAD (full)}   & -- & -- & -- & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table}

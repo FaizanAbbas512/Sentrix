@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SENTRIX — Surveillance Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo-mark"></span>
+      <div>
+        <h1>SENTRIX</h1>
+        <p class="sub">Edge Surveillance Intelligence</p>
+      </div>
+    </div>
+    <div class="live-strip">
+      <span class="rec"><i></i>LIVE</span>
+      <span class="telem" id="t-fps">-- FPS</span>
+      <span class="telem" id="t-clock">--:--:--</span>
+    </div>
+  </header>
+
+  <main class="grid">
+    <!-- VIDEO -->
+    <section class="feed-panel">
+      <div class="panel-head">
+        <span class="eyebrow">CAM 01</span>
+        <span class="src-tag">{{ 'WEBCAM' if cfg.source == 0 else cfg.source }}</span>
+      </div>
+      <div class="feed-wrap">
+        <img id="feed" src="{{ url_for('video_feed') }}" alt="live feed" />
+        <div class="scanline"></div>
+      </div>
+    </section>
+
+    <!-- SIDEBAR -->
+    <aside class="side">
+      <div class="threat-hero" id="threat-hero">
+        <span class="threat-label">Threat Level</span>
+        <span class="threat-level" id="threat-level">NONE</span>
+        <span class="threat-meta" id="threat-meta">System nominal</span>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-card" id="c-people">
+          <span class="stat-label">People</span>
+          <span class="stat-val" id="v-people">0</span>
+        </div>
+        <div class="stat-card" id="c-loiter">
+          <span class="stat-label">Loiter</span>
+          <span class="stat-val" id="v-loiter">0</span>
+        </div>
+        <div class="stat-card" id="c-abandon">
+          <span class="stat-label">Abandon</span>
+          <span class="stat-val" id="v-abandon">0</span>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-card" id="c-fall">
+          <span class="stat-label">Fall</span>
+          <span class="stat-val" id="v-fall">0</span>
+        </div>
+        <div class="stat-card" id="c-fight">
+          <span class="stat-label">Aggression</span>
+          <span class="stat-val" id="v-fight">0</span>
+        </div>
+        <div class="stat-card" id="c-crowd">
+          <span class="stat-label">Crowd</span>
+          <span class="stat-val" id="v-crowd">—</span>
+        </div>
+      </div>
+
+      <div class="alerts-panel">
+        <div class="panel-head">
+          <span class="eyebrow">Event Log</span>
+          <span class="count-pill" id="alert-count">0</span>
+        </div>
+        <ul class="alert-list" id="alert-list">
+          <li class="empty">Koi event nahi — feed monitor ho rahi hai.</li>
+        </ul>
+      </div>
+    </aside>
+  </main>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+% From results/calm_report_<dataset>.json -> "cost", plus SENTRIX evaluate.py
+% for the pose front-end number.
+\begin{table}[t]
+\centering
+\caption{Latency on \pend{CPU (model)}. Decision layer = M1--M4; front end =
+YOLO-pose + ByteTrack, timed separately.}
+\label{tab:cost}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.15}
+\footnotesize
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Component & ms/frame (mean) & ms/frame (p95) \\
+\midrule
+Pose + tracking front end   & -- & -- \\
+M1 reliability              & -- & -- \\
+M2 evidence fusion          & -- & -- \\
+M3 + M4 (per-frame apply)   & -- & -- \\
+\midrule
+\textbf{End-to-end}        & -- & -- \\
+\multicolumn{3}{@{}l}{End-to-end frame rate: \pend{-- fps}} \\
+\bottomrule
+\end{tabular}
+\end{table}

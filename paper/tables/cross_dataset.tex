@@ -1,0 +1,22 @@
+% Fit M3/M4 on the row dataset, evaluate on the column dataset.
+% Report absolute change in F1-bar (and, in text, FAPH inflation) vs the
+% matched in-domain run.
+\begin{table}[t]
+\centering
+\caption{Cross-dataset degradation: $\Delta\bar F_1$ (test minus matched
+in-domain). Closer to $0$ is better; \method{} vs.\ B0 in each cell
+(\method{}\,/\,B0).}
+\label{tab:cross}
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.15}
+\footnotesize
+\begin{tabular}{@{}lccc@{}}
+\toprule
+fit $\downarrow$ \ / \ test $\rightarrow$ & \pend{ShanghaiTech} & \pend{NWPU} & \pend{UBnormal} \\
+\midrule
+\pend{ShanghaiTech} & --      & --\,/\,-- & --\,/\,-- \\
+\pend{NWPU}         & --\,/\,-- & --      & --\,/\,-- \\
+\pend{UBnormal}     & --\,/\,-- & --\,/\,-- & --      \\
+\bottomrule
+\end{tabular}
+\end{table}

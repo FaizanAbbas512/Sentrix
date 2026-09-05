@@ -1,0 +1,44 @@
+% Baseline vs CALM-VAD back end. Included by main.tex (needs tikz + libraries
+% arrows.meta, positioning, fit, backgrounds, calc). Draws inside one column.
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}[
+  font=\footnotesize,
+  box/.style={draw, rounded corners=1pt, minimum height=8mm, minimum width=15mm,
+              align=center, inner sep=2pt},
+  add/.style={box, fill=black!7, thick},
+  fl/.style={-{Stealth[length=1.6mm]}, shorten >=1pt, shorten <=1pt},
+  node distance=4mm and 6mm,
+]
+
+% ---------- baseline row ----------
+\node[box] (b1) {pose\\+ track};
+\node[box, right=of b1] (b2) {5 cue\\analyzers};
+\node[box, right=of b2] (b3) {weighted\\sum};
+\node[box, right=of b3] (b4) {hand\\threshold};
+\node[box, right=of b4] (b5) {alert};
+\foreach \a/\b in {b1/b2,b2/b3,b3/b4,b4/b5} \draw[fl] (\a) -- (\b);
+\node[left=3mm of b1, align=right, text=black!55] {\scriptsize BASELINE};
+\node[below=1mm of b3, text=red!60!black] {\scriptsize uncalibrated \# \ \ no guarantee \ \ no trail};
+
+% ---------- CALM-VAD row ----------
+\node[box, below=15mm of b1] (c1) {pose\\+ track};
+\node[box, right=of c1] (c2) {5 cue\\analyzers};
+\node[add, right=9mm of c2] (m2) {\textbf{M2}\\evidence\\fusion};
+\node[add, right=of m2] (m3) {\textbf{M3}\\calibrate\\$\to p$};
+\node[add, right=of m3] (m4) {\textbf{M4}\\LTT gate\\$\beta$/hr};
+\node[box, right=of m4] (c5) {alert +\\record};
+\node[add, below=6mm of m2] (m1) {\textbf{M1}\\reliability $r$};
+
+\foreach \a/\b in {c1/c2,c2/m2,m2/m3,m3/m4,m4/c5} \draw[fl] (\a) -- (\b);
+\draw[fl] (m1) -- (m2);
+\draw[fl] (c2.south) |- (m1.west);
+\node[left=3mm of c1, align=right, text=black!55] {\scriptsize \textbf{CALM-VAD}};
+
+% brace-ish label under the added chain
+\begin{scope}[on background layer]
+  \node[draw=black!25, rounded corners=2pt, fill=black!3,
+        fit=(m1)(m2)(m3)(m4), inner sep=3pt] {};
+\end{scope}
+\node[below=1mm of m1, text=black!55] {\scriptsize added decision layer};
+
+\end{tikzpicture}}

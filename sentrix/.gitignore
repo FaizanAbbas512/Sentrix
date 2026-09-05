@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+cctv_ai/
+venv/
+*.pt
+
+# Generated data
+data/logs/*.csv
+data/logs/snapshots/*
+data/videos/*
+results/*.txt
+
+# Keep folders
+!data/logs/.gitkeep
+!data/videos/.gitkeep
+!results/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db

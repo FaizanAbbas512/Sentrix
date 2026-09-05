@@ -1,0 +1,237 @@
+/* ============================================================
+   SENTRIX dashboard — command-center theme
+   Palette:
+     base    #0D1117  (deep slate)
+     surface #161D27  (panels)
+     line    #283543  (borders)
+     green   #5BC88A  (nominal)
+     amber   #F2B24B  (watch)
+     red     #E5484D  (alert)
+   Fonts: Space Grotesk (display) / IBM Plex Mono (telemetry) / Inter (body)
+   ============================================================ */
+
+:root {
+  --base: #0D1117;
+  --surface: #161D27;
+  --surface-2: #1C2531;
+  --line: #283543;
+  --txt: #E6EDF3;
+  --txt-dim: #8A97A6;
+  --green: #5BC88A;
+  --amber: #F2B24B;
+  --red: #E5484D;
+  --mono: "IBM Plex Mono", monospace;
+  --disp: "Space Grotesk", sans-serif;
+  --body: "Inter", sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--base);
+  color: var(--txt);
+  font-family: var(--body);
+  min-height: 100vh;
+  background-image:
+    radial-gradient(circle at 15% 0%, rgba(91,200,138,.05), transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(242,178,75,.04), transparent 40%);
+}
+
+/* ---- topbar ---- */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(13,17,23,.7);
+  backdrop-filter: blur(8px);
+  position: sticky; top: 0; z-index: 10;
+}
+.brand { display: flex; align-items: center; gap: 14px; }
+.logo-mark {
+  width: 34px; height: 34px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--green), #2f7d54);
+  position: relative; box-shadow: 0 0 18px rgba(91,200,138,.4);
+}
+.logo-mark::after {
+  content: ""; position: absolute; inset: 11px;
+  border: 2px solid var(--base); border-radius: 50%;
+}
+.brand h1 {
+  font-family: var(--disp); font-size: 20px; font-weight: 700;
+  letter-spacing: 3px;
+}
+.brand .sub { font-size: 11px; color: var(--txt-dim); letter-spacing: 1px; }
+
+.live-strip { display: flex; align-items: center; gap: 18px; }
+.rec {
+  display: flex; align-items: center; gap: 7px;
+  font-family: var(--mono); font-size: 12px; font-weight: 600;
+  color: var(--red); letter-spacing: 1px;
+}
+.rec i {
+  width: 9px; height: 9px; border-radius: 50%; background: var(--red);
+  animation: pulse 1.4s infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; box-shadow: 0 0 0 0 rgba(229,72,77,.5); }
+  50% { opacity: .5; box-shadow: 0 0 0 6px rgba(229,72,77,0); }
+}
+.telem {
+  font-family: var(--mono); font-size: 12px; color: var(--txt-dim);
+  border-left: 1px solid var(--line); padding-left: 18px;
+}
+
+/* ---- layout ---- */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 20px;
+  padding: 20px 28px;
+  max-width: 1500px; margin: 0 auto;
+}
+
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.eyebrow {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 2px;
+  color: var(--txt-dim); text-transform: uppercase;
+}
+
+/* ---- feed ---- */
+.feed-panel {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 14px; padding: 16px;
+}
+.src-tag {
+  font-family: var(--mono); font-size: 11px; color: var(--green);
+  background: rgba(91,200,138,.1); padding: 3px 9px; border-radius: 5px;
+}
+.feed-wrap {
+  position: relative; border-radius: 10px; overflow: hidden;
+  background: #000; aspect-ratio: 16/10;
+}
+.feed-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.scanline {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(rgba(255,255,255,.025) 50%, transparent 50%);
+  background-size: 100% 4px;
+}
+
+/* ---- sidebar ---- */
+.side { display: flex; flex-direction: column; gap: 16px; }
+
+.stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+.stat-card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-top: 2px solid var(--line);
+  border-radius: 12px; padding: 14px 12px; text-align: center;
+  transition: border-color .25s, background .25s;
+}
+.stat-card.active { border-top-color: var(--red); background: rgba(229,72,77,.07); }
+.stat-card.warn { border-top-color: var(--amber); }
+.stat-label {
+  display: block; font-size: 11px; color: var(--txt-dim);
+  letter-spacing: .5px; margin-bottom: 6px;
+}
+.stat-val {
+  font-family: var(--disp); font-size: 30px; font-weight: 700;
+}
+
+/* ---- threat hero (fusion ka faisla) ---- */
+.threat-hero {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 14px; padding: 18px 20px;
+  display: flex; flex-direction: column; gap: 4px;
+  position: relative; overflow: hidden;
+  transition: border-color .3s, background .3s;
+}
+.threat-hero::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: var(--green); transition: background .3s;
+}
+.threat-label {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 2px;
+  color: var(--txt-dim); text-transform: uppercase;
+}
+.threat-level {
+  font-family: var(--disp); font-size: 38px; font-weight: 700;
+  line-height: 1; color: var(--green); transition: color .3s;
+}
+.threat-meta { font-size: 12px; color: var(--txt-dim); }
+
+.threat-hero.low    { border-color: #3a8f8f; }
+.threat-hero.low::before { background: #5fc8c8; }
+.threat-hero.low .threat-level { color: #5fc8c8; }
+.threat-hero.medium { border-color: var(--amber); background: rgba(242,178,75,.06); }
+.threat-hero.medium::before { background: var(--amber); }
+.threat-hero.medium .threat-level { color: var(--amber); }
+.threat-hero.high {
+  border-color: var(--red); background: rgba(229,72,77,.1);
+  animation: throb 1.2s infinite;
+}
+.threat-hero.high::before { background: var(--red); }
+.threat-hero.high .threat-level { color: var(--red); }
+@keyframes throb {
+  0%,100% { box-shadow: 0 0 0 0 rgba(229,72,77,.0); }
+  50% { box-shadow: 0 0 20px 0 rgba(229,72,77,.25); }
+}
+
+/* ---- alerts ---- */
+.alerts-panel {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 14px; padding: 16px; flex: 1; min-height: 260px;
+  display: flex; flex-direction: column;
+}
+.count-pill {
+  font-family: var(--mono); font-size: 11px; color: var(--base);
+  background: var(--txt-dim); padding: 2px 9px; border-radius: 20px; font-weight: 600;
+}
+.alert-list { list-style: none; overflow-y: auto; flex: 1; }
+.alert-list .empty { color: var(--txt-dim); font-size: 13px; padding: 12px 4px; }
+.alert-item {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 10px;
+  align-items: center; padding: 10px 8px;
+  border-bottom: 1px solid var(--line);
+  animation: slidein .3s ease;
+}
+@keyframes slidein { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; } }
+.badge {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  padding: 3px 7px; border-radius: 5px; letter-spacing: .5px;
+}
+.badge.LOITERING { background: rgba(242,178,75,.15); color: var(--amber); }
+.badge.ABANDONED { background: rgba(229,72,77,.15); color: var(--red); }
+.badge.CROWD { background: rgba(91,140,200,.15); color: #6fa8e0; }
+.badge.FALL { background: rgba(240,130,60,.18); color: #f0823c; }
+.badge.FIGHT { background: rgba(229,72,77,.2); color: var(--red); }
+.alert-detail { font-size: 13px; }
+.alert-detail b { font-weight: 600; }
+.alert-detail span { display: block; font-size: 11px; color: var(--txt-dim); }
+.alert-time { font-family: var(--mono); font-size: 10px; color: var(--txt-dim); }
+
+/* ---- totals ---- */
+.totals {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 10px;
+  font-family: var(--mono);
+}
+.totals div {
+  background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 10px; padding: 10px; text-align: center;
+}
+.totals span { display: block; font-size: 10px; color: var(--txt-dim); letter-spacing: 1px; }
+.totals b { font-size: 20px; font-family: var(--disp); }
+
+/* ---- responsive ---- */
+@media (max-width: 980px) {
+  .grid { grid-template-columns: 1fr; }
+  .side { order: 2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rec i, .alert-item { animation: none; }
+}
+
+.alert-list::-webkit-scrollbar { width: 6px; }
+.alert-list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }

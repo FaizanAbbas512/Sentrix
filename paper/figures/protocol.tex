@@ -1,0 +1,25 @@
+% The five evaluation axes and where each attaches to the score -> action path.
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}[
+  font=\footnotesize,
+  stage/.style={draw, rounded corners=1pt, minimum height=8mm, minimum width=17mm, align=center},
+  axis/.style={draw, dashed, rounded corners=1pt, fill=black!4, align=center,
+               minimum height=7mm, inner sep=2pt, text=black!70},
+  fl/.style={-{Stealth[length=1.6mm]}},
+  node distance=8mm,
+]
+\node[stage] (s1) {per-frame\\score $p_t$};
+\node[stage, right=of s1] (s2) {debounced\\event};
+\node[stage, right=of s2] (s3) {threshold\\$\tau$ (M4)};
+\node[stage, right=of s3] (s4) {operator};
+\foreach \a/\b in {s1/s2,s2/s3,s3/s4} \draw[fl] (\a) -- (\b);
+
+\node[axis, above=6mm of s1] (a1) {calibration:\\ECE, Brier};
+\node[axis, above=6mm of s2] (a2) {detection:\\event $F_1$@tIoU};
+\node[axis, above=6mm of s3] (a3) {alarm load:\\FAPH @ recall / $\beta$};
+\node[axis, below=6mm of s2] (a4) {cost:\\ms/frame on CPU};
+\node[axis, below=6mm of s3] (a5) {generalisation:\\train $A$, test $B$};
+
+\foreach \a/\s in {a1/s1,a2/s2,a3/s3} \draw[fl, black!45] (\a) -- (\s);
+\foreach \a/\s in {a4/s2,a5/s3} \draw[fl, black!45] (\a) -- (\s);
+\end{tikzpicture}}

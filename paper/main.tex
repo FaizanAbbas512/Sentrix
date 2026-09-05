@@ -1,0 +1,574 @@
+% ============================================================
+%  CALM-VAD  —  main manuscript
+%  Compile:  pdflatex main ; bibtex main ; pdflatex main ; pdflatex main
+%  (or just open on Overleaf and hit Recompile)
+%
+%  Toggle \draftmode below to show/hide the "results pending" banner
+%  and the TODO notes. Set to \draftfalse for a clean build.
+% ============================================================
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc}
+\usepackage[hidelinks]{hyperref}
+\usepackage[capitalize,nameinlink]{cleveref}   % must load after hyperref
+
+% ---- draft switches -------------------------------------------------
+\newif\ifdraftmode
+\draftmodetrue    % <-- set \draftmodefalse for a clean build
+\ifdraftmode
+  \newcommand{\todo}[1]{\textcolor{red!80!black}{\small[\textbf{TODO:} #1]}}
+  \newcommand{\pend}[1]{\textcolor{blue!60!black}{#1}}
+\else
+  \newcommand{\todo}[1]{}
+  \newcommand{\pend}[1]{#1}
+\fi
+\newcommand{\num}[1]{\pend{\texttt{#1}}}   % placeholder for a result number
+
+% ---- notation -----------------------------------------------------
+\newcommand{\Rel}{r}                 % reliability
+\newcommand{\bel}{\mathrm{Bel}}
+\newcommand{\pl}{\mathrm{Pl}}
+\newcommand{\me}{m}                  % mass function
+\renewcommand{\Theta}{\Omega}       % frame of discernment (Theta is predefined)
+\newcommand{\Anom}{\textsf{A}}       % anomaly hypothesis
+\newcommand{\Norm}{\textsf{N}}       % normal hypothesis
+\newcommand{\faph}{\mathrm{FAPH}}
+\newcommand{\ece}{\mathrm{ECE}}
+\newcommand{\method}{CALM-VAD}
+
+\begin{document}
+
+\title{\method{}: Calibrated, Auditable, Low-Latency Multi-Cue\\
+Video Anomaly Detection for Edge Surveillance}
+
+\author{\IEEEauthorblockN{Author Name(s)}
+\IEEEauthorblockA{Affiliation\\
+email@domain}}
+
+\maketitle
+
+\ifdraftmode
+\begin{center}
+\fbox{\parbox{0.94\columnwidth}{\footnotesize\textcolor{red!70!black}{%
+\textbf{WORKING DRAFT.} Method, protocol and analysis are complete; the
+quantitative tables are populated by the released evaluation harness
+(\texttt{calm/harness.py}) and are marked \pend{pending}. Set
+\texttt{\textbackslash draftmodefalse} to hide this notice and the TODOs.}}}
+\end{center}
+\vspace{4pt}
+\fi
+
+% ==================================================================
+\begin{abstract}
+% ----- context
+Video anomaly detection (VAD) for public-safety surveillance is increasingly
+deployed on resource-constrained edge hardware, yet the systems that run there
+share a common back end: a black-box anomaly score followed by a hand-tuned
+threshold. Recent audits show that this back end, evaluated by frame-level
+AUC, hides catastrophic operating behaviour---tens of thousands of false
+alarms per hour at usable recall---and provides operators with neither a
+probability they can act on nor an evidence trail they can audit.
+% ----- what we do
+We present \method{}, a decision layer that replaces the score-and-threshold
+back end with four lightweight, well-founded stages: (i) a per-frame
+\emph{reliability estimator} for the pose and tracking front end; (ii) a
+\emph{reliability-discounted evidence-fusion} layer that combines interpretable
+behavioural cues as Dempster--Shafer belief mass, so a degraded skeleton
+contributes ignorance rather than a false alarm; (iii) a post-hoc
+\emph{calibration map} that turns fused belief into a probability whose value
+matches observed incident frequency; and (iv) a \emph{distribution-free
+alarm-rate controller} (Learn-then-Test) that admits a threshold only if the
+false-alarms-per-hour budget an operator sets is provably met. Each alert is
+emitted as an \emph{evidence record}: probability, contributing cues with
+weights, sensor reliability, and the budget under which it was raised.
+% ----- evaluation
+We evaluate on \pend{ShanghaiTech, NWPU-Campus, UBnormal, HR-Avenue and CHAD}
+under a deployment-faithful protocol---event-level $F_1$ at temporal IoU,
+false alarms per hour at fixed recall, expected calibration error,
+cross-dataset degradation, and CPU latency---rather than frame AUC alone.
+% ----- headline
+\pend{On these benchmarks \method{} reduces false alarms per hour at
+90\% recall by \num{XX\%} over a weighted-sum baseline, lowers
+expected calibration error from \num{0.XX} to \num{0.0X}, holds the operator
+alarm budget on held-out normal streams, and adds \num{X.X}~ms per frame on a
+commodity CPU.} Code and the evaluation harness are released.
+\end{abstract}
+
+\begin{IEEEkeywords}
+video anomaly detection, edge computing, uncertainty calibration, conformal
+prediction, Dempster--Shafer fusion, false alarm rate, trustworthy AI
+\end{IEEEkeywords}
+
+% ==================================================================
+\section{Introduction}
+
+Automated video anomaly detection is moving from the data centre to the
+camera. Public-safety programmes deploy analytics on embedded accelerators
+and commodity CPUs at the edge, both to meet latency and bandwidth limits and
+to keep raw imagery of uninvolved people from leaving the site
+\cite{edgevadsurvey2026,privacyvadsurvey2024}. The AI-in-video-surveillance
+market is projected to grow from roughly \$6.5\,B in 2024 to \$28.8\,B by 2030,
+with public safety its fastest segment and edge deployment a defining trend
+\cite{marketaivideo2025}.
+
+Despite this shift, the decision back end of nearly every deployable system is
+unchanged from a decade ago: an anomaly model emits a scalar score, and an
+operator or integrator sets a threshold on it by hand. Two recent, independent
+audits show how poorly this serves deployment. First, frame-level AUC---the
+field's dominant metric---does not reflect operating behaviour: at the
+threshold that catches 90\% of anomalous frames, off-the-shelf
+detectors produce a median of \emph{26{,}000--32{,}000 false alarms per hour}
+on a real stream, a volume no human can triage \cite{benchmarkauc2026}.
+Second, models that score well on frames flicker between states within an
+event, so event-level localisation stays below 10\% at a modest
+temporal IoU while frame AUC exceeds 50\% \cite{framestoevents2026}.
+Operators respond to this the way the human-factors literature predicts: when
+a system's alarms are mostly false, trust and compliance fall to match its
+hit rate, and vigilance decays \cite{alertfatigue2025,cctvsemiauto2012,
+cctvvigilance2014}.
+
+Three further gaps compound the problem for \emph{pose-based} edge VAD, the
+lightweight family that avoids transmitting or modelling raw pixels:
+
+\begin{itemize}
+\item \textbf{The score is not a probability.} A reconstruction error or a
+hand-weighted sum has no calibrated meaning, so a threshold cannot be chosen
+on principled grounds and cannot be compared across sites or time.
+\item \textbf{The front end silently corrupts the score.} Occlusion, small
+person scale, truncation and identity switches perturb keypoints \emph{before}
+any analyzer sees them, and a broken skeleton frequently ``looks anomalous''
+\cite{poseChallenges2023,bboxtraj2026}. Reliability is rarely propagated.
+\item \textbf{There is no alarm-rate guarantee.} Thresholds are tuned per site
+with no statistical control over ``alarms per hour,'' even though
+distribution-free machinery for exactly this exists in adjacent fields
+\cite{angelopoulos2021ltt,bates2021rcps,seizurercps2023,conformalcps2026}.
+\end{itemize}
+
+Finally, regulation is making the missing evidence trail mandatory: the EU AI
+Act places biometric and surveillance AI in its high-risk tier, requiring
+human oversight, logging and explainability \cite{euaiact2024}.
+
+\medskip\noindent\textbf{Contributions.} We address these gaps with a single
+deployable layer and the protocol to evaluate it.
+
+\begin{enumerate}
+\item \textbf{Reliability-discounted evidence fusion (M1--M2).} We estimate a
+per-frame reliability for the pose/tracking front end from cheap features, and
+use it as the discount rate of a Dempster--Shafer combination over
+interpretable behavioural cues. A degraded frame moves belief mass to
+\emph{ignorance}, not to \emph{anomaly}; inter-cue conflict is retained as an
+output. To our knowledge this is the first use of sensor reliability as
+belief-mass discounting for multi-cue video anomaly detection.
+\item \textbf{Calibrated, budgeted decisions (M3--M4).} We calibrate the fused
+belief to an incident probability (verified by expected calibration error) and
+apply Learn-then-Test \cite{angelopoulos2021ltt} so an operator names a
+false-alarms-per-hour budget $\beta$ and error level $\delta$ and receives a
+threshold with $\Pr[\faph \le \beta]\ge 1-\delta$. This is, to our knowledge,
+the first VAD system admitted under a distribution-free alarm-rate guarantee.
+\item \textbf{The evidence record.} Every alert is a structured record---
+probability, per-cue belief and discount, conflict, reliability, and the
+admitting budget---directly usable as the audit artifact that oversight
+regimes require \cite{euaiact2024}.
+\item \textbf{A deployment-faithful evaluation harness.} We release a
+reproducible protocol combining event-level $F_1$ at temporal IoU, false
+alarms per hour at fixed recall, calibration error, cross-dataset degradation
+and CPU latency, and use it to study \method{} against weighted-sum, logistic
+and gradient-boosted baselines with full ablations.
+\end{enumerate}
+
+\method{} is built on an existing open pose-VAD pipeline (17-keypoint skeletons
+\cite{ultralytics2023} + ByteTrack \cite{bytetrack2022} + five behavioural
+cues: fall, fight, loitering, abandoned object, crowd). The perception front
+end and the cues are unchanged; the contribution is the decision layer and the
+evaluation around it.
+
+% ==================================================================
+\section{Related Work}
+
+\subsection{Pose- and skeleton-based VAD}
+Skeleton input discards appearance and background, which lowers compute and
+improves privacy; recent methods model normal skeleton dynamics with
+normalizing flows \cite{stgnf2023}, diffusion \cite{graphjigsaw2024},
+autoregressive density \cite{seeker2025}, or cross-domain semantic cues
+\cite{actionhints2025}. These produce a single unsupervised score, are
+evaluated by frame AUC, and---as \cite{poseChallenges2023,bboxtraj2026}
+document---degrade when pose estimation fails. The reliability-aware prototype
+method \cite{reliabilityproto2026} is the closest prior work: it weights a
+single pose-flow prototype model's distance by mean keypoint confidence and
+applies temperature scaling. \method{}
+differs in three ways: reliability enters as \emph{evidence discounting across
+a fused, heterogeneous cue set} with an explicit conflict term; the output is
+risk-controlled, not only temperature-scaled; and it is evaluated for alarm
+load and event localisation, not frame AUC.
+
+\subsection{Lightweight and edge VAD}
+Edge-oriented work targets latency and memory, often with a cheap first stage
+and a heavier verifier \cite{edgevadsurvey2026,nsvad2024}. The system nearest
+to ours in stack \cite{yoloposeclip2026} pairs YOLO-pose with CLIP
+prompt-similarity at 51\,fps on a GPU, reporting frame AUROC only, with no
+fusion, calibration, guarantee or false-alarm analysis. We share the front end
+and add the decision layer it lacks, on CPU.
+
+\subsection{Explainable VAD}
+Vision-language methods emit natural-language rationales \cite{vera2025}; a
+transformer with SHAP attributions produces an interpretable ``suspiciousness''
+regressor \cite{deepusevision2025}. Neither reports calibration, a conformal
+guarantee, false alarms per hour, or an operator study, and both require a GPU;
+\cite{deepusevision2025} is single-frame and uses affect cues that
+action-only systems avoid on reliability grounds. \method{}'s explanation is
+the belief decomposition itself---auditable and free---rather than a generated
+sentence or a post-hoc attribution.
+
+\subsection{Calibration and distribution-free risk control}
+Post-hoc calibration (Platt \cite{platt1999}, isotonic
+\cite{zadrozny2002isotonic}, temperature \cite{guo2017calibration}) and ECE
+\cite{naeini2015ece} are standard in classification but rarely reported for
+VAD \cite{benchmarkauc2026}. Learn-then-Test \cite{angelopoulos2021ltt} and
+risk-controlling prediction sets \cite{bates2021rcps} give model-agnostic,
+finite-sample control of an arbitrary risk; they have been applied to seizure
+false-alarm control \cite{seizurercps2023} and industrial CPS
+\cite{conformalcps2026}, but not, to our knowledge, to video surveillance
+anomaly detection. We instantiate them with ``false alarms per hour of normal
+stream'' as the controlled risk.
+
+\subsection{Evidence fusion}
+Dempster--Shafer theory \cite{shafer1976,smets1994tbm} is a mature tool for
+fusing uncertain, conflicting sources and is valued for interpretability; it
+is standard in intrusion detection \cite{dsids2005} and multi-sensor systems.
+Its use here---discount rates tied to a learned pose/tracking reliability,
+combined with a calibration map and a conformal alarm budget---is, to our
+knowledge, new for real-time edge pose VAD.
+
+\input{tables/positioning}
+
+% ==================================================================
+\section{Problem Formulation}
+\label{sec:problem}
+
+A camera produces frames at rate $\phi$ (fps). A perception front end yields,
+per frame $t$, a set of tracked persons with 17-keypoint skeletons and a set
+of tracked objects. A bank of $C$ behavioural cues maps this to a
+\emph{strength} vector $\mathbf{s}_t\in[0,1]^C$, where $s_{t,c}$ measures how
+far cue $c$ is past its confirmation condition ($0$: not firing; $1$: firmly
+confirmed). Ground truth is a set of anomaly \emph{events}
+$\mathcal{E}=\{(a_k,b_k)\}$, each a maximal interval of frames.
+
+\paragraph{Detection targets}
+Given a per-frame score $p_t$ and threshold $\tau$, predicted events are the
+maximal runs of $\{t: p_t\ge\tau\}$ after debouncing gaps shorter than
+$g$ seconds. For a temporal-IoU threshold $\theta$, event $F_1(\theta)$ uses
+one-to-one greedy matching of predicted to ground-truth events with
+$\mathrm{tIoU}\ge\theta$; we report $\bar F_1=\operatorname{mean}_\theta
+F_1(\theta)$ over $\theta\in\{0.2,0.3,0.4,0.5\}$ \cite{framestoevents2026}.
+
+\paragraph{Alarm load}
+Let $T_{\text{n}}$ be the number of hours of \emph{non-anomalous} stream. The
+false-alarms-per-hour at threshold $\tau$ is
+\begin{equation}
+\faph(\tau)=\frac{\#\{\text{predicted events overlapping no ground-truth event}\}}{T_{\text{n}}}.
+\end{equation}
+We report $\faph$ at the least $\tau$ whose event recall meets a target
+$\rho\in\{0.7,0.8,0.9\}$, and at the operator budget (below).
+
+\paragraph{Calibration}
+With per-window incident labels $y_t\in\{0,1\}$, the (binned) expected
+calibration error is
+\begin{equation}
+\ece=\sum_{b=1}^{B}\frac{|I_b|}{n}\,\bigl|\operatorname{acc}(I_b)-\operatorname{conf}(I_b)\bigr|,
+\end{equation}
+with $I_b$ the windows whose $p_t$ falls in bin $b$; we also report the
+equal-mass (adaptive) variant and the Brier score.
+
+\paragraph{Operator budget}
+The operator specifies a tolerated rate $\beta$ (false alarms per hour) and an
+error level $\delta$. A controller is \emph{valid} if the threshold $\tau$ it
+returns satisfies $\Pr[\faph(\tau)\le\beta]\ge 1-\delta$, the probability over
+the calibration sample.
+
+% ==================================================================
+\section{Method: \method{}}
+\label{sec:method}
+
+\subsection{Overview}
+\Cref{fig:arch} contrasts the baseline back end with \method{}. The front end
+(pose, tracking) and the cue bank are untouched. \method{} adds: M1, a
+reliability estimate $\Rel_t$ for the frame's skeletons and tracks; M2, a
+reliability-discounted Dempster--Shafer fusion of the cues into a belief
+$\bel_t(\Anom)$ and a conflict $K_t$; M3, a calibration map
+$g:\bel\mapsto p$; and M4, a Learn-then-Test choice of $\tau$ meeting the
+operator budget. The alert is the evidence record of
+\cref{sec:record}.
+
+\begin{figure}[t]
+\centering
+\input{figures/architecture}
+\caption{Baseline score-and-threshold back end (top) vs.\ \method{} (bottom).
+The perception front end and the five cues are unchanged; the contribution is
+the shaded chain M1--M4 and the evidence record.}
+\label{fig:arch}
+\end{figure}
+
+\subsection{M1: Front-end reliability}
+For a tracked person $i$ at frame $t$ we form a feature vector
+$\mathbf{x}_{t,i}\in[0,1]^7$ from quantities already in the pipeline: mean
+keypoint confidence, torso-keypoint confidence, fraction of visible joints,
+normalised person scale (pixel height / frame height), an un-truncation ratio
+(visible bbox area / bbox area), track stability (a ramp that resets on an
+identity switch), and temporal smoothness ($1-$ torso-normalised keypoint
+jitter). The reliability is
+\begin{equation}
+\Rel_{t,i}=\operatorname{clip}\!\bigl(\sigma(\mathbf{w}^\top\mathbf{x}_{t,i}+w_0),\;\Rel_{\min},\Rel_{\max}\bigr),
+\end{equation}
+with $\sigma$ the logistic function. In the \emph{heuristic} mode $\mathbf{w}$
+is a fixed convex combination (no $\sigma$); in the \emph{fitted} mode
+$(\mathbf{w},w_0)$ is a logistic regression trained against a proxy quality
+label---temporal IoU of the predicted skeleton against a reference, or
+agreement between the pose cue and a bounding-box-trajectory cue
+\cite{bboxtraj2026}. The per-frame reliability driving M2 is the mean of
+$\Rel_{t,i}$ over the persons who contribute to an active cue (or $1$ when no
+skeleton is involved, e.g.\ a crowd-count frame).
+
+\subsection{M2: Reliability-discounted evidence fusion}
+\label{sec:m2}
+The frame of discernment is $\Theta=\{\Anom,\Norm\}$; a mass function assigns
+belief to $\{\Anom\}$, $\{\Norm\}$ and $\Theta$ (ignorance), summing to $1$.
+Cue $c$ with strength $s$ yields
+\begin{equation}
+\me_c(\{\Anom\})=s,\quad
+\me_c(\{\Norm\})=(1-s)\,\rho_c,\quad
+\me_c(\Theta)=1-\me_c(\{\Anom\})-\me_c(\{\Norm\}),
+\end{equation}
+where $\rho_c\in[0,1]$ encodes how strongly a \emph{silent} cue implies
+normality (small for loitering, larger for a held fall). We then apply
+Shafer discounting twice---once by the cue-type reliability $\Rel_c$
+(configured; a held fall is stronger evidence than a crowd count) and once by
+the per-frame front-end reliability $\Rel_t$ from M1:
+\begin{equation}
+\me'(X)=\Rel\,\me(X)\ \ (X\neq\Theta),\qquad
+\me'(\Theta)=\Rel\,\me(\Theta)+(1-\Rel).
+\end{equation}
+Discounted cues are combined with a standing normal prior by Dempster's rule;
+for two masses over $\Theta$,
+\begin{equation}
+(\me_1\!\oplus\!\me_2)(X)=\frac{1}{1-K}\!\!\sum_{Y\cap Z=X}\!\!\me_1(Y)\,\me_2(Z),
+\quad K=\!\!\sum_{Y\cap Z=\varnothing}\!\!\me_1(Y)\,\me_2(Z).
+\end{equation}
+The fusion outputs $\bel(\Anom)=\me(\{\Anom\})$, the plausibility
+$\pl(\Anom)=\me(\{\Anom\})+\me(\Theta)$, and the accumulated conflict $K_t$.
+A large $K_t$ means the cues disagree and is surfaced to the operator even
+when $\bel(\Anom)$ is mid-range. Every term above is inspectable, so an alert
+decomposes into per-cue mass and the discount applied.
+
+\subsection{M3: Calibration}
+$\bel_t(\Anom)$ is monotone in ``how anomalous'' but is not a frequency. On a
+held-out calibration split with labels $y_t$ we fit a monotone map
+$g:\!\bel\mapsto p$ (isotonic regression by default \cite{zadrozny2002isotonic};
+Platt \cite{platt1999} or temperature \cite{guo2017calibration} for small
+splits), freeze it, and report $\ece$, adaptive-$\ece$ and Brier on the test
+split, before and after $g$.
+
+\subsection{M4: Distribution-free alarm-rate control}
+\label{sec:m4}
+We control $\faph$ with Learn-then-Test \cite{angelopoulos2021ltt} over a
+descending grid of thresholds $\tau_1>\dots>\tau_m$. On a calibration stream
+of $T$ confirmed-normal hours, let $N(\tau)$ be the debounced false-alarm
+event count at $\tau$. Modelling rare independent alarms as Poisson, the exact
+upper $1-\delta$ confidence bound on the rate is
+\begin{equation}
+\widehat{\faph}_{\text{hi}}(\tau)=\frac{1}{2T}\,\chi^2_{1-\delta}\!\bigl(2(N(\tau)+1)\bigr).
+\end{equation}
+Because the nulls $\{\faph(\tau_j)>\beta\}$ are nested (if it fails at $\tau_j$
+it fails for every smaller threshold), fixed-sequence testing is valid without
+multiplicity correction: walk $\tau_1\!\to\!\tau_m$, admit while
+$\widehat{\faph}_{\text{hi}}(\tau_j)\le\beta$, stop at the first violation
+(\cref{alg:ltt}). Deploy the most sensitive admitted threshold; if none is
+admitted, return the most conservative $\tau_1$ and report that the budget
+could not be certified on the available normal hours.
+
+\begin{algorithm}[t]
+\caption{M4 --- alarm-rate control (Learn-then-Test)}
+\label{alg:ltt}
+\begin{algorithmic}[1]
+\Require calibrated scores $p^{\text{n}}$ on $T$ normal hours; budget $\beta$;
+level $\delta$; grid $\tau_1>\dots>\tau_m$
+\State $\mathcal{A}\gets\varnothing$
+\For{$j=1,\dots,m$}
+  \State $N\gets\textsc{DebouncedEventCount}(p^{\text{n}},\tau_j)$
+  \State $u\gets \tfrac{1}{2T}\,\chi^2_{1-\delta}(2(N{+}1))$
+  \If{$u\le\beta$}
+    \State $\mathcal{A}\gets\mathcal{A}\cup\{\tau_j\}$
+  \Else
+    \State \textbf{break} \Comment{fixed-sequence stop}
+  \EndIf
+\EndFor
+\State \Return $\min\mathcal{A}$ if $\mathcal{A}\neq\varnothing$ else $\tau_1$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{The evidence record}
+\label{sec:record}
+An alert is a structured record: timestamp; calibrated $p$; decision
+$p\!\ge\!\tau$; threshold $\tau$ and the $(\beta,\delta)$ it was admitted
+under; $\bel(\Anom)$, $\pl(\Anom)$, conflict $K$; front-end reliability
+$\Rel$; and the list of contributing cues, each with its (discounted) mass and
+strength. It is logged alongside the frame and is the artifact an oversight
+process inspects \cite{euaiact2024}.
+
+% ==================================================================
+\section{Experimental Setup}
+\label{sec:setup}
+
+\begin{figure}[t]
+\centering
+\input{figures/protocol}
+\caption{The five evaluation axes and where each is measured on the path from
+per-frame score to operator action.}
+\label{fig:protocol}
+\end{figure}
+
+\paragraph{Datasets}
+\pend{ShanghaiTech \cite{shanghaitech2017}, NWPU-Campus \cite{nwpu2023},
+UBnormal \cite{ubnormal2022}, HR-Avenue \cite{avenue2013} and CHAD
+\cite{chad2023}}, plus a \pend{UCF-Crime \cite{ucfcrime2018}} subset for the
+cross-domain measurement. \todo{finalise dataset list once poses extracted;
+report per-dataset normal-stream hours available for M4}
+
+\paragraph{Pose extraction}
+17-keypoint COCO skeletons are extracted once with \pend{YOLO11-pose}
+\cite{ultralytics2023} and cached; all downstream computation is CPU-only.
+
+\paragraph{Splits}
+Each dataset is divided into calibration (M3 fit; the normal portion drives
+M4) and test. Cross-dataset runs fit M3/M4 on dataset $A$ and evaluate on $B$.
+
+\paragraph{Baselines}
+\textbf{B0} the weighted-sum fusion of the base pipeline (calibrated for a fair
+ECE comparison); \textbf{B1} logistic regression on the cue-strength vector;
+\textbf{B2} gradient-boosted trees on the same; \textbf{B3} a published
+pose-density score \cite{stgnf2023}, calibrated; \textbf{B4} the single
+strongest cue.
+
+\paragraph{Ablations}
+$-$M1 (no reliability discount), $-$M3 (raw belief, no calibration), $-$M4
+(hand threshold); fusion variant (Dempster $\to$ noisy-OR $\to$ weighted sum);
+calibration variant (isotonic $\to$ Platt $\to$ temperature).
+
+\paragraph{Metrics}
+As in \cref{sec:problem}: frame AUC, $\bar F_1$ and $F_1(\theta)$; $\faph$ at
+$\rho\in\{0.7,0.8,0.9\}$ and at $\beta\in\{2,5,10\}$; $\ece$, adaptive-$\ece$,
+Brier; cross-dataset absolute drop; decision-layer ms/frame and end-to-end fps.
+
+\paragraph{Hardware}
+Decision layer and metrics on \pend{a commodity CPU laptop (model, cores,
+RAM)}; pose extraction timed separately on \pend{free-tier Colab/Kaggle GPU}.
+\todo{fill hardware}
+
+% ==================================================================
+\section{Results}
+\label{sec:results}
+
+\ifdraftmode
+\noindent\textcolor{red!70!black}{\small The tables below give the exact rows
+the released harness (\texttt{python -m calm.harness}) produces; cells are
+\pend{pending} the experimental campaign. The analysis text states the
+hypothesis each table tests.}
+\medskip
+\fi
+
+\subsection{Detection and alarm load}
+\input{tables/main_results}
+\Cref{tab:main} tests hypotheses H1 (M1$+$M2 lower $\faph$ at fixed recall
+versus B0--B2) and H2 (the calibrated chain does not lose event $F_1$ to buy
+that reduction). \pend{We expect \method{} to sit at markedly lower $\faph$ for
+comparable $\bar F_1$, with the gap widening as the recall target rises and as
+front-end degradation increases.}
+
+\subsection{Calibration}
+\input{tables/calibration}
+\Cref{tab:calib} tests H3 (M3 sharply reduces $\ece$ with no recall cost).
+\pend{We expect raw fused belief to be over-confident in the mid range and
+isotonic calibration to cut $\ece$ several-fold, with adaptive-$\ece$ showing
+the same trend on the score mass that matters.}
+
+\subsection{Risk control}
+\input{tables/risk_control}
+\Cref{tab:rc} tests H4 (M4 holds the budget on held-out normal streams). For
+each $\beta$ we report the chosen $\tau$, whether the budget was certified on
+the calibration hours, and the empirical $\faph$ on a disjoint normal test
+stream. \pend{We expect certification wherever normal hours exceed
+$\approx\tfrac{1}{2}\chi^2_{0.95}(2)/\beta$ and the held-out rate to fall at or
+below $\beta$ in every certified case.}
+
+\subsection{Cross-dataset degradation}
+\input{tables/cross_dataset}
+\Cref{tab:cross} tests H5 (the calibrated, reliability-aware chain degrades
+less under domain shift than uncalibrated baselines). \pend{We expect a
+smaller absolute drop in $\bar F_1$ and a smaller inflation of $\faph$ for
+\method{} than for B0--B2, and we report honestly whether the M4 guarantee
+survives the shift.}
+
+\subsection{Cost}
+\input{tables/cost}
+\Cref{tab:cost} reports the decision-layer latency added on CPU and the
+end-to-end frame rate with the pose front end. \pend{We expect the M1--M4
+layer to add on the order of a millisecond per frame and the full system to
+exceed 15\,fps on a commodity CPU.}
+
+\subsection{Qualitative}
+\pend{We show evidence records for representative true and false alarms,
+including a case where a degraded skeleton drives B0 to fire while M1's
+discount keeps \method{} silent, and a case where high conflict $K$ flags a
+genuinely ambiguous scene.} \todo{add 2--3 figure panels with snapshots +
+records}
+
+% ==================================================================
+\section{Limitations}
+\label{sec:limits}
+
+\emph{Reliability weighting is partly precedented.} \citet{reliabilityproto2026}
+weights one model's score by keypoint confidence; our novelty is discounting
+across a fused heterogeneous cue set with a conflict term and the downstream
+calibration and guarantee, not the idea of using confidence.
+\emph{Normal-stream hours.} M4 needs enough confirmed-normal video; several
+pose-VAD benchmarks are short on it, so we report $\faph$ per available
+normal-hour with intervals and mark budgets that cannot be certified.
+\emph{Cue coverage.} The five cues target human-action anomalies; events such
+as cycling or vehicle intrusion fall outside them, as for
+\cite{yoloposeclip2026}. The fusion layer is cue-agnostic and extends.
+\emph{Exchangeability.} Learn-then-Test assumes the calibration and deployment
+normal streams are exchangeable; domain shift can break the guarantee, which
+we treat as a measured outcome rather than an assumption.
+\emph{Not a leaderboard result.} \method{} targets reliability and
+deployability; it is not proposed as a new frame-AUC state of the art.
+
+% ==================================================================
+\section{Conclusion}
+
+Deployable edge video anomaly detection fails at its back end, not its front
+end: a black-box score and a hand-tuned threshold give operators neither a
+usable probability, an auditable rationale, nor a bound on false alarms.
+\method{} replaces that back end with four lightweight stages---front-end
+reliability estimation, reliability-discounted evidence fusion, calibration,
+and distribution-free alarm-rate control---and emits every alert as an
+evidence record. Evaluated under a deployment-faithful protocol rather than
+frame AUC, \pend{it lowers false alarms per hour at fixed recall, produces a
+calibrated incident probability, and holds an operator-set alarm budget, at a
+CPU cost of about a millisecond per frame.} Code and the evaluation harness
+are released to make the protocol reusable.
+% (draft: the sentence above is populated from the harness once experiments run)
+
+% ==================================================================
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+\end{document}

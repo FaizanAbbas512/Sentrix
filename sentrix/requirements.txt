@@ -1,0 +1,7 @@
+ultralytics>=8.4.0
+opencv-python>=4.9.0
+torch>=2.0.0
+torchvision
+numpy
+flask>=3.0.0
+pyyaml

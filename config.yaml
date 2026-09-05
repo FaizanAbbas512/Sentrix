@@ -1,0 +1,124 @@
+# ============================================================
+#  SENTRIX — Configuration
+#  Saari settings yahan se control hoti hain. Code touch karne
+#  ki zaroorat nahi — bas yeh values badlo.
+# ============================================================
+
+# ---- Video source ----
+# 0 = webcam | ya video file ka path do: "data/videos/test.mp4"
+source: 0
+
+# Frame ko itni width pe resize karo (speed ke liye). Height auto.
+frame_width: 640            # weak laptop ke liye 640 best
+
+# ---- Detection model ----
+# NOTE: ab POSE model use ho raha hai — body ka skeleton deta hai (behaviour).
+# Agar yolo26 pose na mile to "yolo11n-pose.pt" try karo (woh pakka available hai).
+model:
+  weights: "yolo26n-pose.pt" # pose model = skeleton = behaviour
+  imgsz: 480                # inference resolution (chhota = tez)
+  conf: 0.45
+  iou: 0.5
+  tracker: "bytetrack.yaml"
+
+# COCO class IDs (pose model sirf person deta hai)
+classes:
+  person: 0
+  objects:                  # pose mode mein bags detect nahi honge (alag model chahiye)
+    backpack: 24
+    handbag: 26
+    suitcase: 28
+
+# ---- Behaviour (pose-based) ----
+# Skeleton se posture + limb agitation. YEH asal "behaviour dekhna" hai.
+behaviour:
+  fall_confirm_seconds: 1.2   # gira hua posture itni der = confirmed fall
+  agitation_threshold: 0.5    # limb speed (body-size normalized) is se zyada = tez
+  history_frames: 5           # itne frames pe speed average
+
+# ---- Loitering analyzer ----
+loitering:
+  dwell_seconds: 15         # itni der ek jagah = loitering
+  movement_tolerance: 60    # itne pixel se kam hile = "stationary"
+
+# ---- Abandoned object analyzer ----
+abandoned:
+  unattended_seconds: 12    # object akela itni der = abandoned
+  owner_radius: 150         # is radius mein person ho to "attended"
+  movement_tolerance: 40    # object itna hile to "moving" (abandoned nahi)
+
+# ---- Crowd analyzer ----
+crowd:
+  threshold: 8              # itne se zyada log = crowd alert
+
+# ---- Fall detection (girna) ----
+# Box ke shape se: aadmi khada = lamba (height > width). Gir gaya = chaura.
+fall:
+  aspect_ratio: 1.15        # width/height is se zyada = lying/fallen
+  confirm_seconds: 1.5      # itni der woh shape rahe to confirm (gira hi hai)
+
+# ---- Fight / aggression (ladai) ----
+# Intelligent: AKELA tez haath alert nahi. Do log PAAS + DONO tez + DER tak.
+fight:
+  proximity: 130            # do persons itne pixel ke andar = "paas"
+  motion_threshold: 35      # centroid fallback (pose na ho to)
+  agitation_threshold: 0.6  # pose limb agitation is se zyada = aggressive
+  confirm_seconds: 1.0
+
+# ---- Intelligent fusion (threat scoring) ----
+# Har signal ka weight. Inhe milake scene ka threat level banta hai.
+fusion:
+  weights:
+    FALL: 4
+    FIGHT: 4
+    ABANDONED: 3
+    LOITERING: 2
+    CROWD: 1
+  levels:                   # total score -> threat level
+    medium: 2
+    high: 4
+
+# ---- Alerts ----
+alerts:
+  cooldown_seconds: 10      # same alert dobara itni der baad
+  save_snapshots: true      # alert pe frame save karo (paper ke liye useful)
+  log_file: "data/logs/alerts.csv"
+  snapshot_dir: "data/logs/snapshots"
+
+# ============================================================
+#  CALM-VAD decision layer (calm/)  —  M1..M4
+#  Replaces the plain weighted-sum fusion above with:
+#    reliability discount -> evidence fusion -> calibration -> risk-control
+#  The 'fusion.weights' block is still used as the B0 baseline.
+# ============================================================
+fps: 20                     # stream frame rate — needed by M4 (alarms per HOUR)
+
+reliability:                # M1
+  floor: 0.05               # never fully distrust a frame
+  ceil: 0.99               # never fully trust one
+  scale_cap: 0.45           # person taller than 45% of frame -> full scale score
+  jitter_cap: 0.15          # torso-normalised keypoint jitter that maps r->0
+
+evidence:                   # M2 (Dempster-Shafer)
+  prior_normal: 0.15        # standing belief that the scene is normal
+  rho:                      # how strongly "cue silent" implies NORMAL (per cue)
+    FALL: 0.35
+    FIGHT: 0.25
+    ABANDONED: 0.30
+    LOITERING: 0.15
+    CROWD: 0.10
+  r_cue:                    # cue-type reliability (a held fall > a crowd count)
+    FALL: 0.90
+    FIGHT: 0.75
+    ABANDONED: 0.80
+    LOITERING: 0.85
+    CROWD: 0.60
+
+calm:
+  enabled: false                   # true = run M1..M4 in the live pipeline + log evidence.jsonl
+  calibration_method: "isotonic"   # isotonic | platt | temperature  (isotonic needs scikit-learn)
+  budget_faph: 5.0                  # operator budget: <= this many false alarms / hour
+  delta: 0.05                       # M4 error level -> guarantee holds w.p. >= 1 - delta
+  fallback_tau: 0.60               # threshold used until M3/M4 have been fitted
+  band_medium: 0.40                # p bands for UI parity with src/fusion.py levels
+  band_high: 0.70
