@@ -247,35 +247,87 @@ def load_generic_json(path, fps=20, split="test"):
     return clips
 
 
+def _kp_idx(pp):
+    """AlphaPose stores person id as 'idx' which may be int, str, or [id]."""
+    v = pp.get("idx", pp.get("track_id", pp.get("id", -1)))
+    if isinstance(v, (list, tuple)):
+        v = v[0] if v else -1
+    try:
+        return int(float(v))
+    except (TypeError, ValueError):
+        return -1
+
+
 def load_shanghaitech_hr(pose_dir, gt_dir=None, fps=24, split="test"):
     """
-    HR-ShanghaiTech style: one JSON per clip named like '01_0014.json' holding
-    {frame_idx(str): [ {"keypoints":[...51...], "score":..., "idx":int}, ... ]}.
-    Ground truth: a per-clip .npy frame mask (1 = anomalous) in gt_dir, same stem.
+    HR-ShanghaiTech / HR-Avenue style (STG-NF, GEPC, MoCoDAD releases):
+    one JSON per clip named like '01_0014.json'. Two layouts are accepted:
+      * dict  {frame_idx(str): [ {"keypoints":[...51...], "idx":id}, ... ]}
+      * list  [ {"image_id":"...", "keypoints":[...], "idx":id}, ... ]  (raw AlphaPose)
+    Ground truth: a per-clip .npy frame mask (1 = anomalous) in gt_dir, same stem
+    (also tries '<stem>.npy' inside gt_dir, or a single 'gt.npy'/'frame_labels.npy').
     """
     clips = []
-    for jp in sorted(glob.glob(os.path.join(pose_dir, "*.json"))):
+    jsons = sorted(glob.glob(os.path.join(pose_dir, "*.json")))
+    if not jsons:
+        raise SystemExit(f"no *.json under {pose_dir}")
+
+    # optional single combined gt file (dict clip->mask) as a fallback
+    combined_gt = {}
+    if gt_dir:
+        for cand in ("gt.npy", "frame_labels.npy", "test_frame_mask.npy"):
+            cp = os.path.join(gt_dir, cand)
+            if os.path.exists(cp):
+                try:
+                    combined_gt = dict(np.load(cp, allow_pickle=True).item())
+                except Exception:
+                    pass
+
+    for jp in jsons:
         stem = os.path.splitext(os.path.basename(jp))[0]
         with open(jp, "r", encoding="utf-8") as f:
-            per_frame = json.load(f)
-        idxs = sorted(int(k) for k in per_frame.keys())
-        n = (max(idxs) + 1) if idxs else 0
+            raw = json.load(f)
+
+        per_frame = {}
+        if isinstance(raw, dict):
+            for k, ppl in raw.items():
+                per_frame.setdefault(_frame_no(k), []).extend(ppl)
+        else:                                    # list of AlphaPose entries
+            for e in raw:
+                per_frame.setdefault(_frame_no(e.get("image_id", e.get("frame", 0))),
+                                     []).append(e)
+
+        n = (max(per_frame) + 1) if per_frame else 0
         frames = [[] for _ in range(n)]
-        for k, people in per_frame.items():
-            fi = int(k)
+        for fi, people in per_frame.items():
             for pp in people:
                 kp = _norm_kp(pp["keypoints"])
-                frames[fi].append(dict(
-                    track_id=int(pp.get("idx", -1)), keypoints=kp,
-                    bbox=_bbox_from_kp(kp), is_person=True, label="person"))
+                frames[fi].append(dict(track_id=_kp_idx(pp), keypoints=kp,
+                                       bbox=_bbox_from_kp(kp), is_person=True,
+                                       label="person"))
         gt = []
-        if gt_dir:
-            gp = os.path.join(gt_dir, stem + ".npy")
-            if os.path.exists(gp):
-                mask = np.load(gp).astype(int).ravel()
-                gt = _mask_to_intervals(mask)
+        if stem in combined_gt:
+            gt = _mask_to_intervals(np.asarray(combined_gt[stem]).astype(int).ravel())
+        elif gt_dir:
+            for cand in (stem + ".npy", stem.replace("_", "") + ".npy"):
+                gp = os.path.join(gt_dir, cand)
+                if os.path.exists(gp):
+                    gt = _mask_to_intervals(np.load(gp).astype(int).ravel())
+                    break
         clips.append(Clip(stem, float(fps), n, frames, gt, split=split))
+
+    got = sum(len(c.gt_intervals) for c in clips)
+    print(f"[load_shanghaitech_hr] {len(clips)} clips, {got} gt events"
+          + ("  (no GT found -- check gt_dir)" if got == 0 else ""))
     return clips
+
+
+def _frame_no(k):
+    """'0014' / '01_0014.jpg' / 14 / '14.png' -> 14 (last integer run)."""
+    import re
+    s = str(k)
+    m = re.findall(r"\d+", s)
+    return int(m[-1]) if m else 0
 
 
 def _mask_to_intervals(mask):
