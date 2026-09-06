@@ -123,9 +123,19 @@ python -m calm.extract_poses --videos <dir> --gt <dir> \
 ### 3. Run
 
 ```bash
+# auto-detect the layout (GEPC/STG-NF json, MoCoDAD csv, or a generic json):
+python -m calm.harness --auto data/ShanghaiTech --tag shanghaitech --fps 24 \
+       --save-generic data/pose/shanghaitech.json
+python -m calm.harness --auto data/HR-Avenue    --tag hr_avenue    --fps 25
+
+# or a pre-built generic-schema file:
 python -m calm.harness --generic data/pose/shanghaitech.json --tag shanghaitech
-python -m calm.harness --generic data/pose/nwpu.json         --tag nwpu
 ```
+
+`colab/calm_vad_colab.ipynb` does all of this across several benchmarks in one
+run (dataset registry + loop + combined comparison table + cross-dataset
+matrix), using the STG-NF and MoCoDAD pre-extracted pose releases — no video
+downloads, no GPU.
 
 ### 4. Cross-dataset drop (generalization axis)
 
