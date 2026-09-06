@@ -343,3 +343,184 @@ def _mask_to_intervals(mask):
         else:
             i += 1
     return intervals
+
+
+# ========================================================================= #
+#  Real benchmark loaders — the community pose-VAD releases                  #
+#  (STG-NF: GEPC-style JSON ; MoCoDAD: Morais-style trajectory CSV)          #
+# ========================================================================= #
+def _parse_pose_json(raw):
+    """
+    Any of these -> {frame_idx: [ {track_id, kp(17,3)} ]}:
+      * person-major nested  {pid: {fid: {"keypoints":[51], "scores":...}}}   (GEPC / STG-NF)
+      * frame-major          {fid: [ {"keypoints":[...], "idx":id}, ... ]}
+      * flat AlphaPose list  [ {"image_id":..., "keypoints":[...], "idx":id}, ... ]
+    """
+    per_frame = {}
+    if isinstance(raw, list):
+        for e in raw:
+            per_frame.setdefault(_frame_no(e.get("image_id", e.get("frame", 0))),
+                                 []).append((_kp_idx(e), _norm_kp(e["keypoints"])))
+    elif isinstance(raw, dict) and raw:
+        v0 = next(iter(raw.values()))
+        person_major = isinstance(v0, dict) and v0 and \
+            isinstance(next(iter(v0.values())), dict)
+        if person_major:
+            for pid, fdict in raw.items():
+                tid = _kp_idx({"idx": pid})
+                for fid, fr in fdict.items():
+                    per_frame.setdefault(_frame_no(fid), []).append(
+                        (tid, _norm_kp(fr["keypoints"])))
+        else:                                       # frame-major
+            for fid, ppl in raw.items():
+                for pp in ppl:
+                    per_frame.setdefault(_frame_no(fid), []).append(
+                        (_kp_idx(pp), _norm_kp(pp["keypoints"])))
+    return per_frame
+
+
+def _clips_from_perframe(name, per_frame, gt, fps, split):
+    n = (max(per_frame) + 1) if per_frame else 0
+    frames = [[] for _ in range(n)]
+    for fi, ppl in per_frame.items():
+        for tid, kp in ppl:
+            frames[fi].append(dict(track_id=tid, keypoints=kp,
+                                   bbox=_bbox_from_kp(kp), is_person=True,
+                                   label="person"))
+    return Clip(name, float(fps), n, frames, gt, split=split)
+
+
+def _find_gt(gt_dir, stem):
+    if not gt_dir:
+        return []
+    for cand in (stem + ".npy", stem.replace("_", "") + ".npy",
+                 stem.split("_")[0] + "_" + stem.split("_")[-1] + ".npy"):
+        p = os.path.join(gt_dir, cand)
+        if os.path.exists(p):
+            return _mask_to_intervals(np.load(p).astype(int).ravel())
+    return []
+
+
+def load_gepc_json(pose_dir, gt_dir=None, fps=24, split="test"):
+    """STG-NF / GEPC layout: pose_dir/*.json (person-major), gt_dir/<stem>.npy."""
+    clips = []
+    for jp in sorted(glob.glob(os.path.join(pose_dir, "*.json"))):
+        base = os.path.splitext(os.path.basename(jp))[0]
+        stem = "_".join(base.split("_")[:2])          # 01_0014_alphapose_... -> 01_0014
+        with open(jp, "r", encoding="utf-8") as f:
+            per_frame = _parse_pose_json(json.load(f))
+        clips.append(_clips_from_perframe(stem, per_frame, _find_gt(gt_dir, stem),
+                                          fps, split))
+    _report("load_gepc_json", clips)
+    return clips
+
+
+def load_trajectory_csv(traj_root, gt_dir=None, fps=24, split="test"):
+    """
+    MoCoDAD / Morais layout:
+      traj_root/<scene>_<clip>/<person_id>.csv   rows: frame, x0,y0, x1,y1, ... (17 joints)
+                                                 (35 cols) or frame + x,y,c*17 (52 cols)
+      gt_dir/<scene>_<clip>.npy
+    """
+    clips = []
+    for cdir in sorted(glob.glob(os.path.join(traj_root, "*"))):
+        if not os.path.isdir(cdir):
+            continue
+        stem = os.path.basename(cdir)
+        per_frame = {}
+        for cp in glob.glob(os.path.join(cdir, "*.csv")):
+            pid = _frame_no(os.path.basename(cp))
+            try:
+                arr = np.loadtxt(cp, delimiter=",", ndmin=2)
+            except Exception:
+                arr = np.genfromtxt(cp, delimiter=",")
+                arr = np.atleast_2d(arr)
+            if arr.size == 0:
+                continue
+            ncol = arr.shape[1]
+            stepper = 3 if ncol >= 1 + 17 * 3 else 2   # x,y,c  vs  x,y
+            for row in arr:
+                fi = int(row[0])
+                body = row[1:]
+                kp = np.zeros((17, 3), float)
+                for j in range(17):
+                    o = j * stepper
+                    if o + 1 < len(body):
+                        kp[j, 0] = body[o]
+                        kp[j, 1] = body[o + 1]
+                        kp[j, 2] = body[o + 2] if stepper == 3 else 1.0
+                per_frame.setdefault(fi, []).append((pid, kp))
+        clips.append(_clips_from_perframe(stem, per_frame, _find_gt(gt_dir, stem),
+                                          fps, split))
+    _report("load_trajectory_csv", clips)
+    return clips
+
+
+def _report(who, clips):
+    got = sum(len(c.gt_intervals) for c in clips)
+    nf = sum(c.n_frames for c in clips)
+    print(f"[{who}] {len(clips)} clips, {nf} frames, {got} gt events"
+          + ("  -- NO GT FOUND (check gt_dir)" if got == 0 else ""))
+
+
+# ------------------------------------------------------------------------- #
+#  one entry point: point it at a dataset root, it figures out the layout   #
+# ------------------------------------------------------------------------- #
+def _first_dir(root, *names):
+    for n in names:
+        for d in glob.glob(os.path.join(root, "**", n), recursive=True):
+            if os.path.isdir(d):
+                return d
+    return None
+
+
+def load_any(root, fps=24, split="test"):
+    """
+    Auto-detect and load a pose-VAD dataset from `root`. Handles:
+      * a single generic-schema .json file            -> load_generic_json
+      * STG-NF/GEPC:  <root>/**/pose/test + gt/test_frame_mask
+      * MoCoDAD:      <root>/**/testing/trajectories + testing/test_frame_mask
+    """
+    if os.path.isfile(root) and root.endswith(".json"):
+        return load_generic_json(root, fps=fps)
+
+    # GEPC / STG-NF
+    pd = _first_dir(root, "test", "testing")
+    pd = (pd if pd and glob.glob(os.path.join(pd, "*.json")) else
+          _first_dir(root, "pose"))
+    if pd and glob.glob(os.path.join(pd, "*.json")):
+        gd = _first_dir(root, "test_frame_mask") or _first_dir(root, "gt")
+        return load_gepc_json(pd, gd, fps=fps, split=split)
+    pj = _first_dir(root, "pose")
+    if pj:
+        pt = os.path.join(pj, "test")
+        if glob.glob(os.path.join(pt, "*.json")):
+            gd = _first_dir(root, "test_frame_mask")
+            return load_gepc_json(pt, gd, fps=fps, split=split)
+
+    # MoCoDAD trajectories
+    td = _first_dir(root, "trajectories")
+    if td:
+        gd = _first_dir(root, "test_frame_mask")
+        return load_trajectory_csv(td, gd, fps=fps, split=split)
+
+    raise SystemExit(
+        f"load_any: could not recognise a pose-VAD layout under {root}. "
+        "Expected a folder of per-clip *.json (GEPC), or */trajectories/*/*.csv "
+        "(MoCoDAD), or a single generic-schema .json.")
+
+
+def clips_to_generic(clips, fps=24, path=None):
+    """Serialise loaded Clips to the generic schema (for reuse / cross-dataset merge)."""
+    import dataclasses
+    obj = {"fps": float(fps), "clips": [dataclasses.asdict(c) for c in clips]}
+    for c in obj["clips"]:
+        for fr in c["frames"]:
+            for d in fr:
+                kp = d.get("keypoints")
+                if kp is not None:
+                    d["keypoints"] = np.asarray(kp).round(2).tolist()
+    if path:
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(obj, f)
+    return obj

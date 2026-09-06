@@ -365,8 +365,13 @@ def main():
     ap.add_argument("--synthetic", action="store_true", help="use the built-in synthetic clips")
     ap.add_argument("--degrade", action="store_true", help="synthetic: add pose degradation")
     ap.add_argument("--generic", default=None, help="path to a generic-JSON benchmark (datasets.load_generic_json)")
+    ap.add_argument("--auto", default=None, metavar="ROOT",
+                    help="dataset root; auto-detects GEPC/STG-NF json, MoCoDAD csv, or a generic json")
     ap.add_argument("--shanghaitech", nargs=2, metavar=("POSE_DIR", "GT_DIR"),
-                    help="HR-ShanghaiTech pose dir + gt dir")
+                    help="HR-ShanghaiTech pose dir + gt dir (GEPC-style json)")
+    ap.add_argument("--fps", type=float, default=24.0, help="stream fps for real datasets")
+    ap.add_argument("--save-generic", default=None,
+                    help="also write the loaded clips to this generic-JSON path (for reuse / cross-dataset)")
     ap.add_argument("--tag", default=None)
     ap.add_argument("--config", default="config.yaml")
     args = ap.parse_args()
@@ -378,12 +383,19 @@ def main():
     if args.generic:
         clips = D.load_generic_json(args.generic)
         tag = args.tag or os.path.splitext(os.path.basename(args.generic))[0]
+    elif args.auto:
+        clips = D.load_any(args.auto, fps=args.fps)
+        tag = args.tag or os.path.basename(os.path.normpath(args.auto))
     elif args.shanghaitech:
-        clips = D.load_shanghaitech_hr(args.shanghaitech[0], args.shanghaitech[1])
+        clips = D.load_gepc_json(args.shanghaitech[0], args.shanghaitech[1], fps=args.fps)
         tag = args.tag or "shanghaitech_hr"
     else:
         clips = D.synthetic(degrade=args.degrade)
         tag = args.tag or ("synthetic_degraded" if args.degrade else "synthetic")
+
+    if args.save_generic and not args.generic:
+        D.clips_to_generic(clips, fps=args.fps, path=args.save_generic)
+        print(f"  -> saved generic copy: {args.save_generic}")
 
     run(clips, cfg, tag=tag)
 
