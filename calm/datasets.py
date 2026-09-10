@@ -466,48 +466,79 @@ def _report(who, clips):
 # ------------------------------------------------------------------------- #
 #  one entry point: point it at a dataset root, it figures out the layout   #
 # ------------------------------------------------------------------------- #
-def _first_dir(root, *names):
-    for n in names:
-        for d in glob.glob(os.path.join(root, "**", n), recursive=True):
-            if os.path.isdir(d):
-                return d
-    return None
+def _all_dirs(root):
+    return [d for d, _, _ in os.walk(root)]
+
+
+def _rank_test(path):
+    """higher = more likely the TEST split."""
+    p = path.lower()
+    return (("test" in p) * 2 + ("testing" in p) * 2
+            - ("train" in p) * 3 - ("val" in p) * 2)
+
+
+def inspect(root):
+    """Print what pose / gt folders load_any would pick under `root`."""
+    dirs = _all_dirs(root)
+    gepc = [(d, len(glob.glob(f"{d}/*.json"))) for d in dirs
+            if len(glob.glob(f"{d}/*.json")) >= 2]
+    traj = [d for d in dirs if os.path.basename(d).lower() == "trajectories"
+            and glob.glob(f"{d}/*/*.csv")]
+    gt = [(d, len(glob.glob(f"{d}/*.npy"))) for d in dirs
+          if len(glob.glob(f"{d}/*.npy")) >= 1]
+    print(f"[inspect] {root}")
+    print("  GEPC json dirs :", [(os.path.relpath(d, root), n) for d, n in
+                                 sorted(gepc, key=lambda x: -x[1])[:6]] or "none")
+    print("  trajectory dirs:", [os.path.relpath(d, root) for d in traj][:6] or "none")
+    print("  .npy gt dirs   :", [(os.path.relpath(d, root), n) for d, n in
+                                 sorted(gt, key=lambda x: -x[1])[:6]] or "none")
+    return gepc, traj, gt
 
 
 def load_any(root, fps=24, split="test"):
     """
-    Auto-detect and load a pose-VAD dataset from `root`. Handles:
-      * a single generic-schema .json file            -> load_generic_json
-      * STG-NF/GEPC:  <root>/**/pose/test + gt/test_frame_mask
-      * MoCoDAD:      <root>/**/testing/trajectories + testing/test_frame_mask
+    Auto-detect and load a pose-VAD dataset anywhere under `root`. Handles:
+      * a single generic-schema .json file              -> load_generic_json
+      * GEPC / STG-NF : any dir with many per-clip *.json (+ a *.npy gt dir)
+      * MoCoDAD       : any '*/trajectories/<clip>/<pid>.csv' (+ a *.npy gt dir)
+    Picks the TEST split when several candidates exist.
     """
     if os.path.isfile(root) and root.endswith(".json"):
         return load_generic_json(root, fps=fps)
+    if not os.path.isdir(root):
+        raise SystemExit(f"load_any: {root} is not a folder")
 
-    # GEPC / STG-NF
-    pd = _first_dir(root, "test", "testing")
-    pd = (pd if pd and glob.glob(os.path.join(pd, "*.json")) else
-          _first_dir(root, "pose"))
-    if pd and glob.glob(os.path.join(pd, "*.json")):
-        gd = _first_dir(root, "test_frame_mask") or _first_dir(root, "gt")
-        return load_gepc_json(pd, gd, fps=fps, split=split)
-    pj = _first_dir(root, "pose")
-    if pj:
-        pt = os.path.join(pj, "test")
-        if glob.glob(os.path.join(pt, "*.json")):
-            gd = _first_dir(root, "test_frame_mask")
-            return load_gepc_json(pt, gd, fps=fps, split=split)
+    gepc, traj, gt = inspect(root)
 
-    # MoCoDAD trajectories
-    td = _first_dir(root, "trajectories")
-    if td:
-        gd = _first_dir(root, "test_frame_mask")
-        return load_trajectory_csv(td, gd, fps=fps, split=split)
+    # best ground-truth dir: prefer 'test_frame_mask', then 'test' in path, then most files
+    gt_dir = None
+    if gt:
+        gt.sort(key=lambda x: (("frame_mask" in x[0].lower()) * 4 + _rank_test(x[0]), x[1]),
+                reverse=True)
+        gt_dir = gt[0][0]
+
+    # GEPC: the json dir with the most files, preferring a 'test' path
+    if gepc:
+        gepc.sort(key=lambda x: (_rank_test(x[0]), x[1]), reverse=True)
+        pose_dir = gepc[0][0]
+        print(f"[load_any] GEPC  pose_dir={os.path.relpath(pose_dir, root)}  "
+              f"gt_dir={os.path.relpath(gt_dir, root) if gt_dir else None}")
+        return load_gepc_json(pose_dir, gt_dir, fps=fps, split=split)
+
+    # MoCoDAD trajectory folders
+    if traj:
+        traj.sort(key=_rank_test, reverse=True)
+        traj_dir = traj[0]
+        print(f"[load_any] MoCoDAD  traj_dir={os.path.relpath(traj_dir, root)}  "
+              f"gt_dir={os.path.relpath(gt_dir, root) if gt_dir else None}")
+        return load_trajectory_csv(traj_dir, gt_dir, fps=fps, split=split)
 
     raise SystemExit(
-        f"load_any: could not recognise a pose-VAD layout under {root}. "
-        "Expected a folder of per-clip *.json (GEPC), or */trajectories/*/*.csv "
-        "(MoCoDAD), or a single generic-schema .json.")
+        f"load_any: no pose data found under {root}.\n"
+        "  expected: a folder of per-clip *.json (GEPC/STG-NF), or\n"
+        "            */trajectories/<clip>/<pid>.csv (MoCoDAD), or\n"
+        "            a single generic-schema .json file.\n"
+        "  run  python -m calm.datasets <root>  to see the tree.")
 
 
 def clips_to_generic(clips, fps=24, path=None):
@@ -524,3 +555,26 @@ def clips_to_generic(clips, fps=24, path=None):
         with open(path, "w", encoding="utf-8") as f:
             json.dump(obj, f)
     return obj
+
+
+if __name__ == "__main__":
+    # python -m calm.datasets <root>   -> show what load_any would pick + a tree
+    import sys
+    if len(sys.argv) < 2:
+        print("usage: python -m calm.datasets <dataset_root>")
+        raise SystemExit(1)
+    r = sys.argv[1]
+    inspect(r)
+    print("\n  first 3 levels of the tree:")
+    base = r.rstrip("/\\")
+    for d, subs, files in os.walk(r):
+        depth = d[len(base):].count(os.sep)
+        if depth > 2:
+            subs[:] = []
+            continue
+        j = len(glob.glob(f"{d}/*.json"))
+        c = len(glob.glob(f"{d}/*.csv"))
+        n = len(glob.glob(f"{d}/*.npy"))
+        tags = " ".join(t for t in (f"{j} json" if j else "", f"{c} csv" if c else "",
+                                    f"{n} npy" if n else "") if t)
+        print("   " + "  " * depth + os.path.basename(d) + ("/  " + tags if tags else "/"))
