@@ -533,8 +533,34 @@ out to check against, because nearly every official ShanghaiTech test clip
 contains a labelled anomaly window. This is an honest, reportable finding in
 its own right -- distribution-free alarm-rate control needs confirmed-normal
 hours that mainstream VAD benchmarks are not built to supply in bulk, which is
-part of the gap this paper identifies (\S\ref{sec:problem}). \pend{We test H4
-properly on UBnormal and a self-recorded normal-stream supplement, pending.}
+part of the gap this paper identifies (\S\ref{sec:problem}).
+
+\textbf{UBnormal supplies more normal stream (69 calibration clips give
+$0.068$\,h; a disjoint $0.15$\,h is held out) but still not enough to certify
+even the loosest budget we test ($\beta{=}10$/h): the held-out empirical rate
+is $53.5$ false alarms per hour.} This is not a failure of M4 so much as a
+direct, measured illustration of the very problem this paper opens with -- at
+this operating point the five heuristic cues, even calibrated, would bury an
+operator exactly as the deployment audit \cite{benchmarkauc2026} and the
+alert-fatigue literature \cite{alertfatigue2025} describe. M4's contribution is making that fact
+\emph{visible before deployment} rather than discovering it in production: a
+system without M4 would simply ship at whatever threshold looked reasonable
+offline, silently generating tens of alarms an hour.
+
+\subsection{Results across completed benchmarks}
+\input{tables/cross_benchmark}
+\Cref{tab:crossbench} puts the two completed runs side by side. Two findings
+generalise across both: M3 calibration is large and consistent
+($\ece$ cut by $93\%$ on ShanghaiTech, $91\%$ on UBnormal), and no threshold
+reaches $0.9$ event recall on either benchmark with our current cue set.
+Event-level $F_1$ differs sharply between them ($0.11$ vs.\ $0.57$), which we
+attribute to UBnormal's staged scenarios containing a higher proportion of
+body-motion anomalies (falls, fights, chases) that overlap our five cues,
+versus ShanghaiTech's broader taxonomy (cycling, vehicles) that our cues do
+not target -- consistent with the cue-coverage limitation in
+\S\ref{sec:limits}. \pend{NWPU, HR-Avenue and CHAD are pending; each row this
+table gains strengthens or weakens the cue-coverage explanation and is
+reported either way.}
 
 \subsection{Cross-dataset degradation}
 \input{tables/cross_dataset}

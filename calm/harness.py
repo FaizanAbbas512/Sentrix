@@ -121,6 +121,14 @@ def _fit_sklearn(kind, X, y):
 # --------------------------------------------------------------------------- #
 def run(clips, cfg, tag="synthetic", budgets=(2.0, 5.0, 10.0),
         recalls=(0.7, 0.8, 0.9), delta=0.05, outdir="results"):
+    empty = [c.name for c in clips if c.n_frames == 0]
+    if empty:
+        print(f"[harness] dropping {len(empty)} zero-frame clip(s) "
+              f"(empty pose file?): {empty[:5]}{' ...' if len(empty) > 5 else ''}")
+        clips = [c for c in clips if c.n_frames > 0]
+    if not clips:
+        raise SystemExit("[harness] no clips with frames left to evaluate")
+
     fps = clips[0].fps
     calib = [c for c in clips if c.split == "calib"]
     test = [c for c in clips if c.split == "test"]
