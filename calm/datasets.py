@@ -552,6 +552,9 @@ def clips_to_generic(clips, fps=24, path=None):
                 if kp is not None:
                     d["keypoints"] = np.asarray(kp).round(2).tolist()
     if path:
+        parent = os.path.dirname(os.path.abspath(path))
+        if parent:
+            os.makedirs(parent, exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(obj, f)
     return obj

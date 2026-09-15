@@ -8,6 +8,7 @@ venv/
 
 # CALM-VAD
 data/pose/*.json
+data/raw/
 results/*.json
 data/logs/evidence.jsonl
 
