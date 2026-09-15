@@ -415,6 +415,46 @@ def load_gepc_json(pose_dir, gt_dir=None, fps=24, split="test"):
     return clips
 
 
+def load_ubnormal_stgnf(pose_dir, gt_dir, fps=30, split="test"):
+    """
+    UBnormal as released in the STG-NF data bundle. NOT auto-detected by
+    load_any -- called explicitly (--ubnormal-stgnf) because its ground-truth
+    convention is the OPPOSITE of ShanghaiTech's and needs the correct stem
+    rule, and getting either wrong would silently corrupt every number.
+
+      pose_dir/<abnormal|normal>_scene_<N>_scenario<...>_alphapose_tracked_person.json
+      gt_dir/<same stem>_tracks.txt   -- an .npy array (despite the .txt name)
+                                          of PER-FRAME LABELS WHERE 1 = NORMAL,
+                                          0 = ANOMALOUS (verified empirically:
+                                          every 'normal_*' file is uniformly 1.0
+                                          across all frames and all clips; every
+                                          'abnormal_*' file is a 0/1 mix with a
+                                          duration that varies clip to clip --
+                                          the opposite polarity from ShanghaiTech's
+                                          test_frame_mask, where 1 = anomalous).
+    We invert (anomaly = 1 - label) so downstream code has one convention.
+    """
+    clips = []
+    for jp in sorted(glob.glob(os.path.join(pose_dir, "*.json"))):
+        base = os.path.splitext(os.path.basename(jp))[0]
+        stem = base.replace("_alphapose_tracked_person", "")
+        with open(jp, "r", encoding="utf-8") as f:
+            per_frame = _parse_pose_json(json.load(f))
+
+        gt = []
+        gp = os.path.join(gt_dir, stem + "_tracks.txt")
+        if os.path.exists(gp):
+            try:
+                raw = np.load(gp).astype(float).ravel()
+                gt = _mask_to_intervals((1.0 - raw).astype(int))
+            except Exception as e:
+                print(f"[load_ubnormal_stgnf] could not read {gp}: {e}")
+
+        clips.append(_clips_from_perframe(stem, per_frame, gt, fps, split))
+    _report("load_ubnormal_stgnf", clips)
+    return clips
+
+
 def load_trajectory_csv(traj_root, gt_dir=None, fps=24, split="test"):
     """
     MoCoDAD / Morais layout:

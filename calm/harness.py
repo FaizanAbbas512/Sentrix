@@ -370,6 +370,9 @@ def main():
                     help="dataset root; auto-detects GEPC/STG-NF json, MoCoDAD csv, or a generic json")
     ap.add_argument("--shanghaitech", nargs=2, metavar=("POSE_DIR", "GT_DIR"),
                     help="HR-ShanghaiTech pose dir + gt dir (GEPC-style json)")
+    ap.add_argument("--ubnormal-stgnf", nargs=2, metavar=("POSE_DIR", "GT_DIR"),
+                    help="UBnormal as released in the STG-NF bundle (inverted "
+                         "gt polarity + different stem rule -- not auto-detected)")
     ap.add_argument("--fps", type=float, default=24.0, help="stream fps for real datasets")
     ap.add_argument("--save-generic", default=None,
                     help="also write the loaded clips to this generic-JSON path (for reuse / cross-dataset)")
@@ -390,6 +393,9 @@ def main():
     elif args.shanghaitech:
         clips = D.load_gepc_json(args.shanghaitech[0], args.shanghaitech[1], fps=args.fps)
         tag = args.tag or "shanghaitech_hr"
+    elif args.ubnormal_stgnf:
+        clips = D.load_ubnormal_stgnf(args.ubnormal_stgnf[0], args.ubnormal_stgnf[1], fps=args.fps)
+        tag = args.tag or "ubnormal"
     else:
         clips = D.synthetic(degrade=args.degrade)
         tag = args.tag or ("synthetic_degraded" if args.degrade else "synthetic")
