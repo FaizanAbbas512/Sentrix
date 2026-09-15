@@ -132,7 +132,8 @@ def run(clips, cfg, tag="synthetic", budgets=(2.0, 5.0, 10.0),
         anom = [c for c in test if c.gt_intervals]
         carve = norm[: max(1, len(norm) // 3)] + anom[: max(1, len(anom) // 3)]
         calib = list({c.name: c for c in (calib + carve)}.values())
-        test = [c for c in test if c not in calib] or test
+        calib_names = {c.name for c in calib}          # Clip holds numpy arrays,
+        test = [c for c in test if c.name not in calib_names] or test  # so compare by name, not `in`
 
     # ---- score every clip, with and without M1 ----------------------------
     scored = {c.name: {"clip": c,

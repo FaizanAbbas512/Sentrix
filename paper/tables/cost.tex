@@ -1,9 +1,12 @@
-% From results/calm_report_<dataset>.json -> "cost", plus SENTRIX evaluate.py
-% for the pose front-end number.
+% Decision-layer cost from results/calm_report_shanghaitech.json -> "cost"
+% (213 clips, 79,477 frames, this machine). Pose front-end cost is measured
+% separately with SENTRIX's own evaluate.py -- not yet run; row left pending.
 \begin{table}[t]
 \centering
-\caption{Latency on \pend{CPU (model)}. Decision layer = M1--M4; front end =
-YOLO-pose + ByteTrack, timed separately.}
+\caption{Latency on a commodity Windows laptop CPU (AMD64, Python 3.12).
+Decision layer = M1--M4, measured over 79{,}477 real ShanghaiTech frames.
+Front end (pose + tracking) is timed separately with SENTRIX's own
+\texttt{evaluate.py}.}
 \label{tab:cost}
 \setlength{\tabcolsep}{6pt}
 \renewcommand{\arraystretch}{1.15}
@@ -12,13 +15,12 @@ YOLO-pose + ByteTrack, timed separately.}
 \toprule
 Component & ms/frame (mean) & ms/frame (p95) \\
 \midrule
-Pose + tracking front end   & -- & -- \\
-M1 reliability              & -- & -- \\
-M2 evidence fusion          & -- & -- \\
-M3 + M4 (per-frame apply)   & -- & -- \\
-\midrule
-\textbf{End-to-end}        & -- & -- \\
-\multicolumn{3}{@{}l}{End-to-end frame rate: \pend{-- fps}} \\
+Pose + tracking front end   & \pend{--} & \pend{--} \\
+\textbf{M1--M4 decision layer} & \textbf{1.384} & \textbf{3.435} \\
 \bottomrule
 \end{tabular}
+\\[2pt]
+\raggedright\footnotesize Decision-layer headroom: 722\,fps (i.e.\ 1.38\,ms/frame)
+on this machine -- the front end, not the decision layer, will set the
+end-to-end frame rate.
 \end{table}

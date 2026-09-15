@@ -1,8 +1,12 @@
-% From results/calm_report_<dataset>.json -> "calibration".
+% Populated from results/calm_report_shanghaitech.json -> "calibration".
+% This is the paper's headline real-data result: isotonic calibration cuts
+% ECE by ~93% on the real ShanghaiTech test stream.
 \begin{table}[t]
 \centering
-\caption{Calibration on the test split (\pend{dataset}). Raw = fused belief
-$\bel(\Anom)$; Cal.\ = after the M3 map. Lower is better.}
+\caption{Calibration on the test split (ShanghaiTech, $n{=}54{,}601$ test
+frames, $23{,}752$ positive, over 141 test clips). Raw = fused belief
+$\bel(\Anom)$; Cal.\ = after the M3 map (isotonic, fit on a disjoint
+36-clip calibration split). Lower is better.}
 \label{tab:calib}
 \setlength{\tabcolsep}{5pt}
 \renewcommand{\arraystretch}{1.15}
@@ -11,12 +15,8 @@ $\bel(\Anom)$; Cal.\ = after the M3 map. Lower is better.}
 \toprule
  & ECE & adaptive-ECE & Brier \\
 \midrule
-Raw belief (no M3)          & -- & -- & -- \\
-+ temperature               & -- & -- & -- \\
-+ Platt                     & -- & -- & -- \\
-\textbf{+ isotonic (M3)}   & -- & -- & -- \\
-\midrule
-B0 weighted sum, calibrated & -- & -- & -- \\
+Raw belief (no M3)          & 0.4126 & 0.4126 & 0.4114 \\
+\textbf{+ isotonic (M3)}   & \textbf{0.0292} & 0.1127 & 0.2413 \\
 \bottomrule
 \end{tabular}
 \end{table}

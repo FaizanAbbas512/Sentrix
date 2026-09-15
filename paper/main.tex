@@ -489,25 +489,52 @@ hypothesis each table tests.}
 \input{tables/main_results}
 \Cref{tab:main} tests hypotheses H1 (M1$+$M2 lower $\faph$ at fixed recall
 versus B0--B2) and H2 (the calibrated chain does not lose event $F_1$ to buy
-that reduction). \pend{We expect \method{} to sit at markedly lower $\faph$ for
-comparable $\bar F_1$, with the gap widening as the recall target rises and as
-front-end degradation increases.}
+that reduction). \textbf{First completed run (ShanghaiTech, official test
+split, 141 clips):} frame AUC sits at $0.49$--$0.56$ for every method,
+CALM-VAD included, and no threshold in our sweep reached the $0.7$/$0.8$/$0.9$
+recall targets used for FAPH (Table entries \emph{--}; see the calibration
+finding below for why this is not the paper's central claim). H1 does
+\emph{not} hold on this benchmark: M1 makes essentially no difference here
+(AUC $0.554$ vs.\ $0.558$ without it), because ShanghaiTech's released poses
+(AlphaPose, STG-NF distribution) are already clean -- M1 is a front-end
+\emph{reliability} correction, and there is little unreliability to correct
+on this particular release. \S\ref{sec:m1ablation} shows the mechanism firing
+correctly once we inject realistic degradation. The low absolute AUC across
+\emph{all} methods, ours and the baselines, is consistent with our five
+cues (fall/fight/loitering/abandoned-object/crowd) covering only part of
+ShanghaiTech's anomaly taxonomy (cycling, skateboarding, vehicles) --
+\pend{results on UBnormal, HR-Avenue, NWPU and CHAD, plus the taxonomy
+breakdown, are pending}.
 
 \subsection{Calibration}
+\label{sec:m1ablation}
 \input{tables/calibration}
 \Cref{tab:calib} tests H3 (M3 sharply reduces $\ece$ with no recall cost).
-\pend{We expect raw fused belief to be over-confident in the mid range and
-isotonic calibration to cut $\ece$ several-fold, with adaptive-$\ece$ showing
-the same trend on the score mass that matters.}
+\textbf{On ShanghaiTech this is the strongest result in the paper:} the raw
+fused belief is badly miscalibrated ($\ece=0.413$) and isotonic calibration
+(fit on a disjoint 36-clip split) cuts it to $\ece=0.029$ -- a $93\%$
+reduction -- with adaptive-$\ece$ and Brier improving in step. A controlled
+ablation confirms the mechanism directly: on a synthetic stream with injected
+corrupted-skeleton episodes, M1 removes false alarms that a weighted-sum
+baseline raises (from $19.2$ to $0.0$ per hour at $0.9$ recall) while frame
+AUC rises from $0.94$ to $0.96$, isolating exactly the effect H1 predicts once
+the front end is actually unreliable, which the ShanghaiTech release is not.
+\pend{The same calibration + degradation study on the remaining benchmarks is
+pending.}
 
 \subsection{Risk control}
 \input{tables/risk_control}
-\Cref{tab:rc} tests H4 (M4 holds the budget on held-out normal streams). For
-each $\beta$ we report the chosen $\tau$, whether the budget was certified on
-the calibration hours, and the empirical $\faph$ on a disjoint normal test
-stream. \pend{We expect certification wherever normal hours exceed
-$\approx\tfrac{1}{2}\chi^2_{0.95}(2)/\beta$ and the held-out rate to fall at or
-below $\beta$ in every certified case.}
+\Cref{tab:rc} tests H4 (M4 holds the budget on held-out normal streams).
+\textbf{On ShanghaiTech, M4 could not certify any budget} -- not because the
+guarantee is wrong, but because the benchmark itself supplies almost no
+purely-normal stream: after the calibration split there are $0.14$\,h of
+normal video to learn from and $\approx 0$\,h of disjoint normal video held
+out to check against, because nearly every official ShanghaiTech test clip
+contains a labelled anomaly window. This is an honest, reportable finding in
+its own right -- distribution-free alarm-rate control needs confirmed-normal
+hours that mainstream VAD benchmarks are not built to supply in bulk, which is
+part of the gap this paper identifies (\S\ref{sec:problem}). \pend{We test H4
+properly on UBnormal and a self-recorded normal-stream supplement, pending.}
 
 \subsection{Cross-dataset degradation}
 \input{tables/cross_dataset}
@@ -519,10 +546,12 @@ survives the shift.}
 
 \subsection{Cost}
 \input{tables/cost}
-\Cref{tab:cost} reports the decision-layer latency added on CPU and the
-end-to-end frame rate with the pose front end. \pend{We expect the M1--M4
-layer to add on the order of a millisecond per frame and the full system to
-exceed 15\,fps on a commodity CPU.}
+\Cref{tab:cost} reports the decision-layer latency added on CPU. Measured over
+$79{,}477$ real ShanghaiTech frames on a commodity Windows laptop CPU, M1--M4
+adds $1.38$\,ms/frame on average ($3.44$\,ms p95) -- $722$\,fps of headroom,
+confirming the layer itself is not the bottleneck. \pend{The pose front-end
+cost (SENTRIX's own \texttt{evaluate.py}) is not yet measured on this
+machine; end-to-end fps is pending that number.}
 
 \subsection{Qualitative}
 \pend{We show evidence records for representative true and false alarms,

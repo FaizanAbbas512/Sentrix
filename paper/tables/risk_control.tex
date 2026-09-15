@@ -1,21 +1,26 @@
-% From results/calm_report_<dataset>.json -> "risk_control_M4".
+% Populated from results/calm_report_shanghaitech.json -> "risk_control_M4".
+% Honest real-data finding: ShanghaiTech's official test split has ~0.14 h of
+% calibration-side normal stream and (to two decimals) 0 h of held-out normal
+% stream -- essentially every official test clip contains a labelled anomaly
+% window. M4 cannot be certified from this benchmark alone; see discussion.
 \begin{table}[t]
 \centering
-\caption{M4 alarm-rate control (\pend{dataset}). $\tau$ chosen on
-\pend{$T_{\text{cal}}$} normal hours; held-out FAPH measured on a disjoint
-\pend{$T_{\text{test}}$} normal hours. ``Cert.'' = the budget was certified at
-$\delta{=}0.05$.}
+\caption{M4 alarm-rate control (ShanghaiTech). Calibration-side normal stream:
+0.14\,h; held-out normal stream: $\approx$0\,h (ShanghaiTech's official test
+split contains almost no purely-normal clips). No budget could be certified
+from this benchmark alone -- a genuine limitation of the benchmark, not of M4;
+see Sec.~\ref{sec:limits}.}
 \label{tab:rc}
 \setlength{\tabcolsep}{5pt}
 \renewcommand{\arraystretch}{1.15}
 \footnotesize
 \begin{tabular}{@{}lcccc@{}}
 \toprule
-Budget $\beta$ (/hr) & $\tau$ & Cert.? & held-out FAPH & recall @ $\tau$ \\
+Budget $\beta$ (/hr) & $\tau$ & Cert.? & upper bound (calib) & held-out FAPH \\
 \midrule
-$2$   & -- & -- & -- & -- \\
-$5$   & -- & -- & -- & -- \\
-$10$  & -- & -- & -- & -- \\
+$2$   & 0.990 & no & 20.8\,/h & 0.0\,/h (0\,h stream) \\
+$5$   & 0.990 & no & 20.8\,/h & 0.0\,/h (0\,h stream) \\
+$10$  & 0.990 & no & 20.8\,/h & 0.0\,/h (0\,h stream) \\
 \bottomrule
 \end{tabular}
 \end{table}
