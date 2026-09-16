@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 import json
 import os
 import glob
+import pickle
 import numpy as np
 
 
@@ -452,6 +453,91 @@ def load_ubnormal_stgnf(pose_dir, gt_dir, fps=30, split="test"):
 
         clips.append(_clips_from_perframe(stem, per_frame, gt, fps, split))
     _report("load_ubnormal_stgnf", clips)
+    return clips
+
+
+def load_chad(root, fps=30, split="test", split_file="splits/test_split_1.txt"):
+    """
+    CHAD -- Charlotte Anomaly Dataset (TeCSAR-UNCC), the metadata release
+    (poses ship natively, no video/GPU needed):
+      root/annotations/<stem>.pkl       {frame: {person_id: [bbox_xywh(4,),
+                                          keypoints(17,3) x,y,conf]}}  (verified
+                                          directly against a real file)
+      root/anomaly_labels/<stem>.npy    per-frame binary, 1 = anomalous
+                                         (verified: normal-suffixed stems are
+                                         all-zero, abnormal-suffixed are 0/1 mix
+                                         -- same polarity as ShanghaiTech)
+      root/splits/{train,test}_split_{1,2}.txt   two INDEPENDENT partitions
+                                         (test_split_1's clips do not appear in
+                                         train_split_1, but do overlap
+                                         train_split_2 -- they are alternates,
+                                         not to be merged). Default: split 1's
+                                         official test list.
+    fps=30: the paper states all four cameras are recorded at 30 fps
+    (1920x1080 for cams 1-3, 1280x720 for cam 4; arXiv:2212.09258).
+    Pass split_file=None to load every annotated clip instead.
+    """
+    ann_dir = os.path.join(root, "annotations")
+    lab_dir = os.path.join(root, "anomaly_labels")
+    if split_file:
+        with open(os.path.join(root, split_file)) as f:
+            stems = [ln.strip() for ln in f if ln.strip()]
+    else:
+        stems = [os.path.splitext(f)[0] for f in os.listdir(ann_dir) if f.endswith(".pkl")]
+
+    clips = []
+    for stem in stems:
+        pp = os.path.join(ann_dir, stem + ".pkl")
+        if not os.path.exists(pp):
+            continue
+        with open(pp, "rb") as f:
+            raw = pickle.load(f)
+        n = (max(raw.keys()) + 1) if raw else 0
+        frames = [[] for _ in range(n)]
+        for fi, people in raw.items():
+            for pid, (bbox, kp) in people.items():
+                kp = np.asarray(kp, float)
+                x, y, w, h = [float(v) for v in bbox]
+                frames[fi].append(dict(track_id=int(pid), keypoints=kp,
+                                       bbox=(x, y, x + w, y + h),
+                                       is_person=True, label="person"))
+        gt = []
+        lp = os.path.join(lab_dir, stem + ".npy")
+        if os.path.exists(lp):
+            gt = _mask_to_intervals(np.load(lp).astype(int).ravel())
+        clips.append(Clip(stem, float(fps), n, frames, gt, split=split))
+    _report("load_chad", clips)
+    return clips
+
+
+def load_known_normal_pool(pose_dir, fps=30, split="calib", require_prefix="normal_"):
+    """
+    Load a pose folder that is normal *by construction* (e.g. UBnormal's
+    'train' split, which STG-NF ships as 186 'normal_scene_*' clips with zero
+    'abnormal_*' files) as confirmed-normal-stream hours -- gt is forced to
+    [] regardless of any gt_dir, so there is no chance of cross-contamination
+    from another split's ground truth. Use this to give M4 more normal hours
+    to certify a budget against, on top of whatever the test/calib split
+    already supplies.
+
+    require_prefix guards against silently mixing in a non-normal clip if the
+    folder's contents ever change; set to None to disable the check.
+    """
+    clips = []
+    skipped = 0
+    for jp in sorted(glob.glob(os.path.join(pose_dir, "*.json"))):
+        base = os.path.splitext(os.path.basename(jp))[0]
+        if require_prefix and not os.path.basename(jp).startswith(require_prefix):
+            skipped += 1
+            continue
+        stem = base.replace("_alphapose_tracked_person", "")
+        with open(jp, "r", encoding="utf-8") as f:
+            per_frame = _parse_pose_json(json.load(f))
+        clips.append(_clips_from_perframe(stem, per_frame, [], fps, split))
+    if skipped:
+        print(f"[load_known_normal_pool] skipped {skipped} file(s) not matching "
+              f"prefix {require_prefix!r} (not assumed normal)")
+    _report("load_known_normal_pool", clips)
     return clips
 
 
