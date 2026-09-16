@@ -568,18 +568,26 @@ annotated benchmark.
 
 \subsection{Results across completed benchmarks}
 \input{tables/cross_benchmark}
-\Cref{tab:crossbench} puts the two completed runs side by side. Two findings
-generalise across both: M3 calibration is large and consistent
-($\ece$ cut by $93\%$ on ShanghaiTech, $91\%$ on UBnormal), and no threshold
-reaches $0.9$ event recall on either benchmark with our current cue set.
-Event-level $F_1$ differs sharply between them ($0.11$ vs.\ $0.57$), which we
-attribute to UBnormal's staged scenarios containing a higher proportion of
-body-motion anomalies (falls, fights, chases) that overlap our five cues,
-versus ShanghaiTech's broader taxonomy (cycling, vehicles) that our cues do
-not target -- consistent with the cue-coverage limitation in
-\S\ref{sec:limits}. \pend{NWPU, HR-Avenue and CHAD are pending; each row this
-table gains strengthens or weakens the cue-coverage explanation and is
-reported either way.}
+\Cref{tab:crossbench} puts the three completed runs side by side. Three
+findings generalise across all of them. \textbf{M3 calibration is large and
+consistent}: $\ece$ falls by $93\%$ (ShanghaiTech), $91\%$ (UBnormal) and
+$77\%$ (CHAD) -- smaller on CHAD only because its raw belief was already
+better calibrated to start ($\ece_{\text{raw}}=0.231$ vs.\ $0.41$--$0.50$ on
+the other two). \textbf{No threshold reaches $0.9$ event recall on any of the
+three} with our current cue set. \textbf{Decision-layer cost is stable and
+cheap}: $1.25$--$1.47$\,ms/frame across three independently-scored benchmarks
+on the same commodity CPU, i.e.\ the M1--M4 layer's cost does not depend on
+which dataset is running through it, as the design intends.
+
+Event-level $\bar F_1$ varies by dataset ($0.11$ ShanghaiTech, $0.57$
+UBnormal, $0.54$ CHAD), which we attribute to how much of each benchmark's
+anomaly taxonomy our five cues actually target: UBnormal's staged scenarios
+and CHAD's parking-lot incidents skew toward body-motion and
+proximity/loitering events (falls, fights, chases, lurking near vehicles)
+that overlap our cues, while ShanghaiTech's broader taxonomy (cycling,
+skateboarding, vehicles on footpaths) is largely outside them -- consistent
+with the cue-coverage limitation in \S\ref{sec:limits}, now supported by
+three data points instead of one. \pend{NWPU and HR-Avenue are pending.}
 
 \subsection{Cross-dataset degradation}
 \input{tables/cross_dataset}
