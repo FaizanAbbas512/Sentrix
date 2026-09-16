@@ -1,8 +1,8 @@
-% Three real, completed runs (results/calm_report_{shanghaitech,ubnormal,chad}.json).
-% NWPU, HR-Avenue pending -- rows will be appended, not replaced.
+% Four real, completed runs (results/calm_report_{shanghaitech,ubnormal,chad,avenue}.json).
+% NWPU pending -- one more row to append.
 \begin{table}[t]
 \centering
-\caption{CALM-VAD (full) across the three benchmarks completed so far. FAPH is
+\caption{CALM-VAD (full) across the four benchmarks completed so far. FAPH is
 reported at the lowest recall target reached in the sweep; $-$/inf means no
 finite-alarm threshold reached even $0.7$ recall.}
 \label{tab:crossbench}
@@ -16,6 +16,7 @@ Dataset & test clips & AUC & $\bar F_1$ & ECE raw$\to$cal & FAPH (best) & ms/fra
 ShanghaiTech & 141 & 0.554 & 0.113 & $0.413\to0.029$ & -- & 1.384 \\
 UBnormal     & 141 & 0.538 & 0.570 & $0.499\to0.046$ & $240.7$/h @ $0.7$ & 1.465 \\
 CHAD         &  90 & 0.589 & 0.544 & $0.231\to0.053$ & inf & 1.253 \\
+Avenue       &  14 & 0.491 & 0.000 & $0.287\to0.127$ & inf & 1.229 \\
 \bottomrule
 \end{tabular}
 \end{table}

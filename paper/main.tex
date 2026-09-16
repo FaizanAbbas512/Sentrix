@@ -568,26 +568,34 @@ annotated benchmark.
 
 \subsection{Results across completed benchmarks}
 \input{tables/cross_benchmark}
-\Cref{tab:crossbench} puts the three completed runs side by side. Three
+\Cref{tab:crossbench} puts the four completed runs side by side. Three
 findings generalise across all of them. \textbf{M3 calibration is large and
-consistent}: $\ece$ falls by $93\%$ (ShanghaiTech), $91\%$ (UBnormal) and
-$77\%$ (CHAD) -- smaller on CHAD only because its raw belief was already
-better calibrated to start ($\ece_{\text{raw}}=0.231$ vs.\ $0.41$--$0.50$ on
-the other two). \textbf{No threshold reaches $0.9$ event recall on any of the
-three} with our current cue set. \textbf{Decision-layer cost is stable and
-cheap}: $1.25$--$1.47$\,ms/frame across three independently-scored benchmarks
+positive on every benchmark, including the one where detection fails}:
+$\ece$ falls by $93\%$ (ShanghaiTech), $91\%$ (UBnormal), $77\%$ (CHAD) and
+$56\%$ (Avenue) -- smaller on CHAD only because its raw belief was already
+better calibrated to start ($\ece_{\text{raw}}=0.231$ vs.\ $0.29$--$0.50$ on
+the others). \textbf{No threshold reaches $0.9$ event recall on any of the
+four} with our current cue set. \textbf{Decision-layer cost is stable and
+cheap}: $1.22$--$1.47$\,ms/frame across four independently-scored benchmarks
 on the same commodity CPU, i.e.\ the M1--M4 layer's cost does not depend on
 which dataset is running through it, as the design intends.
 
-Event-level $\bar F_1$ varies by dataset ($0.11$ ShanghaiTech, $0.57$
-UBnormal, $0.54$ CHAD), which we attribute to how much of each benchmark's
-anomaly taxonomy our five cues actually target: UBnormal's staged scenarios
-and CHAD's parking-lot incidents skew toward body-motion and
+Event-level $\bar F_1$ varies sharply by dataset ($0.11$ ShanghaiTech, $0.57$
+UBnormal, $0.54$ CHAD, $\mathbf{0.00}$ Avenue), which we attribute to how much
+of each benchmark's anomaly taxonomy our five cues actually target.
+\textbf{Avenue is the clean negative control this explanation predicts}: its
+anomalies are almost entirely non-body-motion (running in the wrong
+direction, throwing objects, loitering with a bicycle) that our cues do not
+model, and frame AUC sits at $0.49$ -- indistinguishable from chance -- with
+zero events matched at any tIoU. UBnormal's staged scenarios and CHAD's
+parking-lot incidents, by contrast, skew toward body-motion and
 proximity/loitering events (falls, fights, chases, lurking near vehicles)
-that overlap our cues, while ShanghaiTech's broader taxonomy (cycling,
-skateboarding, vehicles on footpaths) is largely outside them -- consistent
-with the cue-coverage limitation in \S\ref{sec:limits}, now supported by
-three data points instead of one. \pend{NWPU and HR-Avenue are pending.}
+that overlap our cues; ShanghaiTech sits in between (some cycling/vehicle
+anomalies our cues miss, some human ones they catch). This is consistent with
+the cue-coverage limitation in \S\ref{sec:limits}, and Avenue's null result is
+the strongest single piece of evidence for it: \textbf{a method that is
+honest about its scope should score at chance on a benchmark whose anomalies
+are entirely outside that scope, and CALM-VAD does.} \pend{NWPU is pending.}
 
 \subsection{Cross-dataset degradation}
 \input{tables/cross_dataset}

@@ -681,6 +681,10 @@ def clips_to_generic(clips, fps=24, path=None):
     import dataclasses
     obj = {"fps": float(fps), "clips": [dataclasses.asdict(c) for c in clips]}
     for c in obj["clips"]:
+        # load_generic_json reads the ground-truth key as "gt", not the
+        # dataclass field name "gt_intervals" -- rename on the way out or the
+        # round trip silently loses every ground-truth interval.
+        c["gt"] = c.pop("gt_intervals")
         for fr in c["frames"]:
             for d in fr:
                 kp = d.get("keypoints")
