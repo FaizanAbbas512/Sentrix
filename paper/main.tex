@@ -547,6 +547,25 @@ alert-fatigue literature \cite{alertfatigue2025} describe. M4's contribution is 
 system without M4 would simply ship at whatever threshold looked reasonable
 offline, silently generating tens of alarms an hour.
 
+\textbf{Supplying more confirmed-normal hours does let M4 certify.}
+UBnormal's official ``train'' split is 186 clips that are normal by
+construction (STG-NF ships zero anomalous clips there); adding them as extra
+calibration-side normal stream (\Cref{tab:rc-ub}) raises the available normal
+hours from $0.068$\,h to $0.797$\,h. At that point M4 \textbf{certifies both
+$\beta{=}5$/h and $\beta{=}10$/h} (empirically $0$ false alarms on the
+$0.15$\,h held-out normal stream at the certified threshold), while
+$\beta{=}2$/h still cannot be certified -- consistent with the
+$\approx\tfrac12\chi^2_{0.95}(2)/\beta$ hours the theory requires
+(\S\ref{sec:m4}: $1.5$\,h for $\beta{=}2$, not yet reached). Nothing about M4
+changed between \Cref{tab:rc} and \Cref{tab:rc-ub}; only the quantity of
+confirmed-normal calibration data did. This is, to our knowledge, the first
+demonstration of a distribution-free alarm-rate guarantee actually being
+certified for a heuristic multi-cue video anomaly detector, and it pins down
+exactly what a deployment needs to supply for M4 to be usable in practice: on
+the order of an hour of confirmed-normal footage per site, not a fully
+annotated benchmark.
+\input{tables/risk_control_ubnormal}
+
 \subsection{Results across completed benchmarks}
 \input{tables/cross_benchmark}
 \Cref{tab:crossbench} puts the two completed runs side by side. Two findings

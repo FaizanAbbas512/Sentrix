@@ -1,0 +1,23 @@
+% UBnormal M4, plain test-derived normal hours vs. +train-split normal pool
+% (calm.datasets.load_known_normal_pool: UBnormal's 186 'train' clips are
+% normal by construction, so their gt is forced to [] -- see the function's
+% docstring for the no-cross-contamination guarantee).
+\begin{table}[t]
+\centering
+\caption{M4 on UBnormal: supplying more confirmed-normal hours certifies a
+budget for the first time in this paper. ``+train pool'' adds UBnormal's
+186 normal-by-construction training clips as extra calibration-side normal
+stream; nothing about M4 itself changes between the two rows.}
+\label{tab:rc-ub}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.15}
+\footnotesize
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Calibration source & normal hrs & $\beta{=}2$ & $\beta{=}5$ & $\beta{=}10$ \\
+\midrule
+test-split only        & 0.068\,h & no & no & no \\
+\textbf{+ train pool}  & \textbf{0.797\,h} & no & \textbf{CERTIFIED} & \textbf{CERTIFIED} \\
+\bottomrule
+\end{tabular}
+\end{table}

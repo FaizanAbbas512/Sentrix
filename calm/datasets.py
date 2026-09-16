@@ -496,10 +496,19 @@ def load_chad(root, fps=30, split="test", split_file="splits/test_split_1.txt"):
         frames = [[] for _ in range(n)]
         for fi, people in raw.items():
             for pid, (bbox, kp) in people.items():
+                # real detector output: occluded/undetected joints and (rarely)
+                # a whole-person bbox can come through as NaN. Force confidence
+                # to 0 (not just zero the coordinate) on any row touched by NaN,
+                # so downstream code -- which already treats low-confidence
+                # keypoints as "not seen" -- correctly skips it, instead of a
+                # NaN silently propagating into every later computation.
                 kp = np.asarray(kp, float)
+                bad = np.isnan(kp).any(axis=1)
+                kp[bad] = 0.0
+                bbox = np.nan_to_num(np.asarray(bbox, float), nan=0.0)
                 x, y, w, h = [float(v) for v in bbox]
                 frames[fi].append(dict(track_id=int(pid), keypoints=kp,
-                                       bbox=(x, y, x + w, y + h),
+                                       bbox=(x, y, x + max(w, 0), y + max(h, 0)),
                                        is_person=True, label="person"))
         gt = []
         lp = os.path.join(lab_dir, stem + ".npy")
