@@ -6,9 +6,12 @@ five planned benchmarks have **real results** in the text and tables
 (ShanghaiTech, UBnormal, CHAD, Avenue), including B4 and the fusion- and
 calibration-variant ablation sweeps (Tables VII-VIII, §VI-E) and two real
 qualitative evidence-record panels with real Avenue video snapshots
-(Fig. 3). Only NWPU-Campus remains genuinely pending — search `\pend{` in
-`main.tex` for the exact remaining spots. `main.pdf` was compiled and
-visually checked on this machine (MiKTeX), not fabricated.
+(Fig. 3). Every `refs.bib` citation has been individually verified against
+its real source (not just re-read) — see item 5 below. Only NWPU-Campus
+remains genuinely pending, and that gap was investigated rather than
+assumed (item 1 below) — search `\pend{` in `main.tex` for the exact
+remaining spots. `main.pdf` was compiled and visually checked on this
+machine (MiKTeX), not fabricated.
 
 ## Files
 
@@ -61,9 +64,18 @@ in a standard TeX Live / MiKTeX / Overleaf install.
 
 ## What's left before this is submission-ready
 
-1. NWPU-Campus (needs a GPU pose-extraction pass — 76.6 GB raw video, no pose
-   release). Not attempted — genuinely out of scope for a CPU-only session;
-   flagged rather than silently skipped.
+1. NWPU-Campus — investigated, not just left pending: its official release
+   ships only raw video (76.6 GB), and we checked the one plausible
+   shortcut (the original authors' own tracking-bundle release) directly —
+   downloaded it, inspected 547 real per-clip pickles, confirmed they are
+   YOLO-style bounding-box tracks (no keypoints), which is not enough for
+   M1 or the FALL/FIGHT cues. **No shortcut exists**; a real result needs
+   a GPU pose-extraction pass over the raw video (a T4 on Colab would do
+   it — the extracted trackings, `data/raw/nwpu/tracking/NCampus/`, are
+   kept locally in case a bbox-only supplementary cue subset is ever
+   wanted, but that would be a materially weaker result than the other
+   four datasets' full 5-cue evaluation, not a like-for-like fifth
+   benchmark). Genuinely the one open gap; `\draftmodetrue` reflects that.
 2. ~~Run B3 (published pose-density baseline) and B4 (single strongest cue)~~
    B4 is run on all 4 datasets (Table VII). B3 is a deliberate, explained
    decline, not an oversight: a fair B3 needs cloning and training STG-NF's
@@ -81,11 +93,24 @@ in a standard TeX Live / MiKTeX / Overleaf install.
    `python -m calm.qualitative search` (prints the winning clip/frame/record)
    and `python -m calm.qualitative snapshot --clip 01 --frame 965 --out ...`
    (decodes the exact real video frame).
-5. Re-read the four closest papers cited in the dossier before claiming
-   novelty in a submission — still an editorial task for a human pass,
-   not done in this session.
+5. ~~Re-read the four closest papers cited in the dossier before claiming
+   novelty in a submission~~ Done as an actual verification pass, not just
+   a re-read: every `refs.bib` entry's real source was fetched individually
+   (arXiv page, publisher listing, or the paper's own PDF text) and
+   confirmed real and accurately described — no fabricated citations. Found
+   and fixed real defects along the way: ~18 placeholder "Anonymous"
+   authors filled in with the real names; a wrong volume/year on two
+   Applied Ergonomics entries; a wrong journal name on one Elsevier entry;
+   two dead (never-cited) entries removed; and one real factual error —
+   `reliabilityproto2026` does **not** use temperature scaling (verified by
+   reading its full text: zero occurrences of "temperature") — caught and
+   the differentiation paragraph in §II-A rewritten to describe the actual
+   method. One entry (`edgevadsurvey2026`) still has a placeholder author
+   field — its title/venue/DOI are confirmed but the real author list is
+   behind a paywalled abstract; resolve before camera-ready.
 6. `\draftmodefalse`, recompile, proofread — hold until (1) is closed or
-   explicitly accepted as a stated limitation, and (5) is done.
+   explicitly accepted as a stated limitation (now the only remaining
+   condition — (5) is done).
 
 ## Target venues (see the research dossier for the full argument)
 
