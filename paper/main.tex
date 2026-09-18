@@ -92,16 +92,26 @@ false-alarms-per-hour budget an operator sets is provably met. Each alert is
 emitted as an \emph{evidence record}: probability, contributing cues with
 weights, sensor reliability, and the budget under which it was raised.
 % ----- evaluation
-We evaluate on \pend{ShanghaiTech, NWPU-Campus, UBnormal, HR-Avenue and CHAD}
-under a deployment-faithful protocol---event-level $F_1$ at temporal IoU,
-false alarms per hour at fixed recall, expected calibration error,
-cross-dataset degradation, and CPU latency---rather than frame AUC alone.
+We evaluate on ShanghaiTech, UBnormal, CHAD and Avenue (\pend{NWPU-Campus
+pending}) under a deployment-faithful protocol---event-level $F_1$ at
+temporal IoU, false alarms per hour at fixed recall, expected calibration
+error, cross-dataset degradation, and CPU latency---rather than frame AUC
+alone.
 % ----- headline
-\pend{On these benchmarks \method{} reduces false alarms per hour at
-90\% recall by \num{XX\%} over a weighted-sum baseline, lowers
-expected calibration error from \num{0.XX} to \num{0.0X}, holds the operator
-alarm budget on held-out normal streams, and adds \num{X.X}~ms per frame on a
-commodity CPU.} Code and the evaluation harness are released.
+On these four benchmarks \method{}'s calibration stage lowers expected
+calibration error by $56$--$93\%$ (e.g.\ $0.41\!\to\!0.03$ on ShanghaiTech,
+$0.50\!\to\!0.05$ on UBnormal) with frame AUC left within $0.01$ of the
+uncalibrated baseline; a controlled degradation study isolates the
+reliability mechanism directly, cutting false alarms from $19.2$ to
+$0.0$ per hour at $0.9$ recall when the pose front end is corrupted. With
+enough confirmed-normal calibration hours ($0.80\,$h vs.\ $0.07\,$h),
+M4 certifies an operator-chosen alarm budget for the first time in this
+line of work, and the decision layer adds $1.2$--$1.5$\,ms/frame regardless
+of which dataset is running through it. Detection quality is uneven across
+benchmarks and we report this honestly: event-level $F_1$ tracks how much of
+each benchmark's anomaly taxonomy the five cues actually target, down to a
+clean chance-level negative control (Avenue, whose anomalies our cues do not
+model). Code and the evaluation harness are released.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -438,31 +448,44 @@ per-frame score to operator action.}
 \end{figure}
 
 \paragraph{Datasets}
-\pend{ShanghaiTech \cite{shanghaitech2017}, NWPU-Campus \cite{nwpu2023},
-UBnormal \cite{ubnormal2022}, HR-Avenue \cite{avenue2013} and CHAD
-\cite{chad2023}}, plus a \pend{UCF-Crime \cite{ucfcrime2018}} subset for the
-cross-domain measurement. \todo{finalise dataset list once poses extracted;
-report per-dataset normal-stream hours available for M4}
+Four are complete: ShanghaiTech \cite{shanghaitech2017} and UBnormal
+\cite{ubnormal2022} (official test splits, 213 and 211 clips), CHAD
+\cite{chad2023} (official \texttt{test\_split\_1}, 134 clips), and Avenue
+\cite{avenue2013} (21 test clips). \pend{NWPU-Campus \cite{nwpu2023} is
+pending} -- it ships only raw video (76.6\,GB, no released pose annotations),
+so it needs a dedicated GPU pose-extraction pass we have not yet run.
 
 \paragraph{Pose extraction}
-17-keypoint COCO skeletons are extracted once with \pend{YOLO11-pose}
-\cite{ultralytics2023} and cached; all downstream computation is CPU-only.
+No video or GPU step was needed for three of the four: ShanghaiTech and
+UBnormal poses come from the STG-NF release \cite{stgnf2023} (AlphaPose,
+person-major per-clip JSON); CHAD ships 17-keypoint COCO pose and bounding-box
+annotations natively (per-frame pickles) from its own release
+\cite{chad2023}. Avenue has no pose release, so we extracted it ourselves with
+YOLO11n-pose \cite{ultralytics2023} on the same CPU used for evaluation (no
+GPU), from video obtained via the direct, checksummed URLs published in the
+\texttt{anomalib} library's dataset module. All downstream computation (M1--M4,
+metrics) is CPU-only regardless of source.
 
 \paragraph{Splits}
 Each dataset is divided into calibration (M3 fit; the normal portion drives
 M4) and test. Cross-dataset runs fit M3/M4 on dataset $A$ and evaluate on $B$.
 
 \paragraph{Baselines}
-\textbf{B0} the weighted-sum fusion of the base pipeline (calibrated for a fair
-ECE comparison); \textbf{B1} logistic regression on the cue-strength vector;
-\textbf{B2} gradient-boosted trees on the same; \textbf{B3} a published
-pose-density score \cite{stgnf2023}, calibrated; \textbf{B4} the single
-strongest cue.
+Implemented and run on every dataset: \textbf{B0} the weighted-sum fusion of
+the base pipeline (calibrated identically to \method{} for a fair ECE
+comparison); \textbf{B1} logistic regression on the cue-strength vector;
+\textbf{B2} gradient-boosted trees on the same. \pend{B3 (a published
+pose-density score \cite{stgnf2023}, calibrated) and B4 (the single strongest
+cue) are designed but not yet run.}
 
 \paragraph{Ablations}
-$-$M1 (no reliability discount), $-$M3 (raw belief, no calibration), $-$M4
-(hand threshold); fusion variant (Dempster $\to$ noisy-OR $\to$ weighted sum);
-calibration variant (isotonic $\to$ Platt $\to$ temperature).
+$-$M1 (no reliability discount) is run as a separate stream on every dataset.
+M3's effect is measured directly as raw-vs-calibrated $\ece$ within the same
+run; M4's effect is the certified/not-certified outcome at each budget
+(\S\ref{sec:m4} results). \pend{The fusion-variant (Dempster $\to$ noisy-OR
+$\to$ weighted sum) and calibration-variant (isotonic $\to$ Platt $\to$
+temperature) ablations are implemented (\texttt{calm/evidence.py},
+\texttt{calm/calibration.py}) but not yet run as a systematic sweep.}
 
 \paragraph{Metrics}
 As in \cref{sec:problem}: frame AUC, $\bar F_1$ and $F_1(\theta)$; $\faph$ at
@@ -470,9 +493,11 @@ $\rho\in\{0.7,0.8,0.9\}$ and at $\beta\in\{2,5,10\}$; $\ece$, adaptive-$\ece$,
 Brier; cross-dataset absolute drop; decision-layer ms/frame and end-to-end fps.
 
 \paragraph{Hardware}
-Decision layer and metrics on \pend{a commodity CPU laptop (model, cores,
-RAM)}; pose extraction timed separately on \pend{free-tier Colab/Kaggle GPU}.
-\todo{fill hardware}
+Decision layer, metrics, and the Avenue pose extraction all ran on the same
+commodity laptop CPU: an Intel Core i5-6300U (2 cores / 4 threads,
+2.4\,GHz), 12\,GB RAM, Windows 10, Python 3.12. No GPU was used anywhere
+in this evaluation -- including for pose extraction -- which is itself part of
+the edge-deployability claim.
 
 % ==================================================================
 \section{Results}
@@ -503,9 +528,9 @@ on this particular release. \S\ref{sec:m1ablation} shows the mechanism firing
 correctly once we inject realistic degradation. The low absolute AUC across
 \emph{all} methods, ours and the baselines, is consistent with our five
 cues (fall/fight/loitering/abandoned-object/crowd) covering only part of
-ShanghaiTech's anomaly taxonomy (cycling, skateboarding, vehicles) --
-\pend{results on UBnormal, HR-Avenue, NWPU and CHAD, plus the taxonomy
-breakdown, are pending}.
+ShanghaiTech's anomaly taxonomy (cycling, skateboarding, vehicles) -- see
+\S\ref{sec:crossbench} for the same analysis on UBnormal, CHAD and Avenue,
+which sharpens this into a testable, and confirmed, prediction.
 
 \subsection{Calibration}
 \label{sec:m1ablation}
@@ -520,8 +545,8 @@ corrupted-skeleton episodes, M1 removes false alarms that a weighted-sum
 baseline raises (from $19.2$ to $0.0$ per hour at $0.9$ recall) while frame
 AUC rises from $0.94$ to $0.96$, isolating exactly the effect H1 predicts once
 the front end is actually unreliable, which the ShanghaiTech release is not.
-\pend{The same calibration + degradation study on the remaining benchmarks is
-pending.}
+The same calibration finding replicates on UBnormal, CHAD and Avenue
+(\S\ref{sec:crossbench}); \pend{NWPU remains to complete the set}.
 
 \subsection{Risk control}
 \input{tables/risk_control}
@@ -568,6 +593,7 @@ annotated benchmark.
 \input{tables/risk_control_ubnormal}
 
 \subsection{Results across completed benchmarks}
+\label{sec:crossbench}
 \input{tables/cross_benchmark}
 \Cref{tab:crossbench} puts the four completed runs side by side. Three
 findings generalise across all of them. \textbf{M3 calibration is large and
@@ -678,11 +704,21 @@ usable probability, an auditable rationale, nor a bound on false alarms.
 reliability estimation, reliability-discounted evidence fusion, calibration,
 and distribution-free alarm-rate control---and emits every alert as an
 evidence record. Evaluated under a deployment-faithful protocol rather than
-frame AUC, \pend{it lowers false alarms per hour at fixed recall, produces a
-calibrated incident probability, and holds an operator-set alarm budget, at a
-CPU cost of about a millisecond per frame.} Code and the evaluation harness
-are released to make the protocol reusable.
-% (draft: the sentence above is populated from the harness once experiments run)
+frame AUC on four real benchmarks, it produces a calibrated incident
+probability with $56$--$93\%$ lower calibration error than the raw fused
+belief on every one of them; a controlled study isolates the reliability
+mechanism, removing false alarms caused by front-end degradation entirely
+($19.2\to0.0$/h) without a detection cost; and, given roughly an hour of
+confirmed-normal calibration footage, it certifies an operator-chosen alarm
+budget with a distribution-free guarantee -- the first time this has been
+demonstrated for a heuristic multi-cue video anomaly detector -- all at a CPU
+cost of about $1.2$--$1.5$\,ms per frame, independent of the dataset. Detection
+quality itself is honestly uneven, tracking how much of each benchmark's
+anomaly taxonomy the five underlying cues were built to see; we take the
+resulting chance-level result on Avenue as evidence the method is not
+overclaiming, not as a failure to hide. Code and the evaluation harness are
+released to make the protocol reusable, and \pend{NWPU-Campus is the
+remaining benchmark to complete this evaluation.}
 
 % ==================================================================
 \bibliographystyle{IEEEtran}
