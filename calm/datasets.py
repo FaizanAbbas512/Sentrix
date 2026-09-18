@@ -456,6 +456,37 @@ def load_ubnormal_stgnf(pose_dir, gt_dir, fps=30, split="test"):
     return clips
 
 
+def convert_avenue_mat_gt(mask_dir, out_dir):
+    """
+    CUHK Avenue ground truth ships as ground_truth_demo/testing_label_mask/
+    '<N>_label.mat', each holding a MATLAB 'volLabel' cell array: one
+    (H,W) uint8 pixel mask per frame. Convert to one <video-stem>.npy
+    per-frame binary array (1=anomalous) per clip, named to match the video
+    files ('01.avi' <-> '1_label.mat', note the video has a leading zero the
+    mask filename does not).
+    """
+    import re
+    from scipy.io import loadmat
+    os.makedirs(out_dir, exist_ok=True)
+    n = 0
+    for mp in sorted(glob.glob(os.path.join(mask_dir, "*_label.mat"))):
+        m = re.search(r"(\d+)_label", os.path.basename(mp))
+        if not m:
+            continue
+        stem = f"{int(m.group(1)):02d}"
+        a = loadmat(mp)["volLabel"]
+        if a.dtype == object:
+            mask = np.array([int(np.any(f)) for f in a.ravel()])
+        else:
+            arr = np.asarray(a)
+            mask = ((arr.reshape(-1, arr.shape[-1]).sum(0) > 0).astype(int)
+                    if arr.ndim >= 3 else (arr.ravel() > 0).astype(int))
+        np.save(os.path.join(out_dir, stem + ".npy"), mask)
+        n += 1
+    print(f"[convert_avenue_mat_gt] {n} mask files -> {out_dir}")
+    return n
+
+
 def load_chad(root, fps=30, split="test", split_file="splits/test_split_1.txt"):
     """
     CHAD -- Charlotte Anomaly Dataset (TeCSAR-UNCC), the metadata release
