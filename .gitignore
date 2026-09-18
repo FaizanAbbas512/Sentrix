@@ -26,3 +26,13 @@ results/*.txt
 # OS
 .DS_Store
 Thumbs.db
+
+# LaTeX build junk (keep paper/main.pdf itself)
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.bbl
+paper/*.blg
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.synctex.gz

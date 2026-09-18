@@ -282,10 +282,11 @@ $\mathrm{tIoU}\ge\theta$; we report $\bar F_1=\operatorname{mean}_\theta
 F_1(\theta)$ over $\theta\in\{0.2,0.3,0.4,0.5\}$ \cite{framestoevents2026}.
 
 \paragraph{Alarm load}
-Let $T_{\text{n}}$ be the number of hours of \emph{non-anomalous} stream. The
-false-alarms-per-hour at threshold $\tau$ is
+Let $T_{\text{n}}$ be the number of hours of \emph{non-anomalous} stream, and
+let a \emph{false-alarm event} be a predicted event overlapping no
+ground-truth event. The false-alarms-per-hour at threshold $\tau$ is
 \begin{equation}
-\faph(\tau)=\frac{\#\{\text{predicted events overlapping no ground-truth event}\}}{T_{\text{n}}}.
+\faph(\tau)=\frac{\#\{\text{false-alarm events}\}}{T_{\text{n}}}.
 \end{equation}
 We report $\faph$ at the least $\tau$ whose event recall meets a target
 $\rho\in\{0.7,0.8,0.9\}$, and at the operator budget (below).
@@ -353,11 +354,11 @@ skeleton is involved, e.g.\ a crowd-count frame).
 The frame of discernment is $\Theta=\{\Anom,\Norm\}$; a mass function assigns
 belief to $\{\Anom\}$, $\{\Norm\}$ and $\Theta$ (ignorance), summing to $1$.
 Cue $c$ with strength $s$ yields
-\begin{equation}
-\me_c(\{\Anom\})=s,\quad
-\me_c(\{\Norm\})=(1-s)\,\rho_c,\quad
-\me_c(\Theta)=1-\me_c(\{\Anom\})-\me_c(\{\Norm\}),
-\end{equation}
+\begin{align}
+\me_c(\{\Anom\}) &= s, \\
+\me_c(\{\Norm\}) &= (1-s)\,\rho_c, \\
+\me_c(\Theta) &= 1-\me_c(\{\Anom\})-\me_c(\{\Norm\}),
+\end{align}
 where $\rho_c\in[0,1]$ encodes how strongly a \emph{silent} cue implies
 normality (small for loitering, larger for a held fall). We then apply
 Shafer discounting twice---once by the cue-type reliability $\Rel_c$
@@ -370,8 +371,10 @@ the per-frame front-end reliability $\Rel_t$ from M1:
 Discounted cues are combined with a standing normal prior by Dempster's rule;
 for two masses over $\Theta$,
 \begin{equation}
-(\me_1\!\oplus\!\me_2)(X)=\frac{1}{1-K}\!\!\sum_{Y\cap Z=X}\!\!\me_1(Y)\,\me_2(Z),
-\quad K=\!\!\sum_{Y\cap Z=\varnothing}\!\!\me_1(Y)\,\me_2(Z).
+(\me_1\!\oplus\!\me_2)(X)=\frac{1}{1-K}\sum_{Y\cap Z=X}\me_1(Y)\,\me_2(Z),
+\end{equation}
+\begin{equation}
+K=\sum_{Y\cap Z=\varnothing}\me_1(Y)\,\me_2(Z).
 \end{equation}
 The fusion outputs $\bel(\Anom)=\me(\{\Anom\})$, the plausibility
 $\pl(\Anom)=\me(\{\Anom\})+\me(\Theta)$, and the accumulated conflict $K_t$.
@@ -678,8 +681,9 @@ records}
 \section{Limitations}
 \label{sec:limits}
 
-\emph{Reliability weighting is partly precedented.} \citet{reliabilityproto2026}
-weights one model's score by keypoint confidence; our novelty is discounting
+\emph{Reliability weighting is partly precedented.} The reliability-aware
+prototype method \cite{reliabilityproto2026} weights one model's score by
+keypoint confidence; our novelty is discounting
 across a fused heterogeneous cue set with a conflict term and the downstream
 calibration and guarantee, not the idea of using confidence.
 \emph{Normal-stream hours.} M4 needs enough confirmed-normal video; several
