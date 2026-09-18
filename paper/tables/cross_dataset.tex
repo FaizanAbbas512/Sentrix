@@ -1,22 +1,25 @@
-% Fit M3/M4 on the row dataset, evaluate on the column dataset.
-% Report absolute change in F1-bar (and, in text, FAPH inflation) vs the
-% matched in-domain run.
+% Real cross-dataset run: fit M3 on the row dataset (using its own test-split
+% clips as the calibration source), evaluate on the column dataset's test
+% split. Cell = Delta-F1bar (cross-domain event F1 minus that dataset's own
+% in-domain event F1); diagonal is in-domain by definition (n/a here).
+% Source: results/calm_report_<fit>__to__<test>.json, all 12 pairs.
 \begin{table}[t]
 \centering
-\caption{Cross-dataset degradation: $\Delta\bar F_1$ (test minus matched
-in-domain). Closer to $0$ is better; \method{} vs.\ B0 in each cell
-(\method{}\,/\,B0).}
+\caption{Cross-dataset $\Delta\bar F_1$ (event $F_1$, cross-domain minus that
+column's own in-domain value). Positive = cross-domain fit did \emph{better}
+than self-calibration; negative = worse. Diagonal is in-domain (n/a).}
 \label{tab:cross}
-\setlength{\tabcolsep}{5pt}
+\setlength{\tabcolsep}{4pt}
 \renewcommand{\arraystretch}{1.15}
 \footnotesize
-\begin{tabular}{@{}lccc@{}}
+\begin{tabular}{@{}lcccc@{}}
 \toprule
-fit $\downarrow$ \ / \ test $\rightarrow$ & \pend{ShanghaiTech} & \pend{NWPU} & \pend{UBnormal} \\
+fit $\downarrow$ / test $\rightarrow$ & ShanghaiTech & UBnormal & CHAD & Avenue \\
 \midrule
-\pend{ShanghaiTech} & --      & --\,/\,-- & --\,/\,-- \\
-\pend{NWPU}         & --\,/\,-- & --      & --\,/\,-- \\
-\pend{UBnormal}     & --\,/\,-- & --\,/\,-- & --      \\
+ShanghaiTech & n/a    & $-0.266$ & $+0.000$ & $+0.071$ \\
+UBnormal     & $+0.309$ & n/a    & $-0.013$ & $+0.259$ \\
+CHAD         & $-0.113$ & $-0.243$ & n/a    & $+0.000$ \\
+Avenue       & $-0.113$ & $-0.258$ & $-0.133$ & n/a    \\
 \bottomrule
 \end{tabular}
 \end{table}

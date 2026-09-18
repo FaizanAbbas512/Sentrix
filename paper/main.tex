@@ -370,6 +370,7 @@ when $\bel(\Anom)$ is mid-range. Every term above is inspectable, so an alert
 decomposes into per-cue mass and the discount applied.
 
 \subsection{M3: Calibration}
+\label{sec:m3}
 $\bel_t(\Anom)$ is monotone in ``how anomalous'' but is not a frequency. On a
 held-out calibration split with labels $y_t$ we fit a monotone map
 $g:\!\bel\mapsto p$ (isotonic regression by default \cite{zadrozny2002isotonic};
@@ -599,11 +600,37 @@ are entirely outside that scope, and CALM-VAD does.} \pend{NWPU is pending.}
 
 \subsection{Cross-dataset degradation}
 \input{tables/cross_dataset}
-\Cref{tab:cross} tests H5 (the calibrated, reliability-aware chain degrades
-less under domain shift than uncalibrated baselines). \pend{We expect a
-smaller absolute drop in $\bar F_1$ and a smaller inflation of $\faph$ for
-\method{} than for B0--B2, and we report honestly whether the M4 guarantee
-survives the shift.}
+\Cref{tab:cross} tests H5 (the calibrated chain degrades gracefully under
+domain shift) with all 12 fit/test pairs across the four benchmarks: M3 is fit
+on one dataset's own test-split clips and evaluated on another's. The honest
+result is \textbf{mixed, not uniformly positive}, and we report it as such
+rather than only the pairs that flatter the method.
+
+\textbf{Detection is essentially domain-invariant.} Frame AUC moves by at most
+$0.041$ across every one of the 12 pairs (most by $<0.02$) relative to that
+test set's in-domain AUC -- expected, since AUC is a rank statistic over the
+M1+M2 belief and M3's calibration map is monotone, so it does not reorder
+scores. \textbf{Event $F_1$ and calibration are not domain-invariant, and the
+direction of the shift is not always the intuitive one:} five of twelve pairs
+\emph{improve} on the target dataset's own self-calibrated $\bar F_1$ (e.g.\
+UBnormal-fit evaluated on ShanghaiTech: $+0.309$), while others degrade by as
+much as $-0.266$ (ShanghaiTech-fit on UBnormal). This happens because
+event-level $F_1$ depends on where the fixed decision threshold lands relative
+to each dataset's own score distribution after calibration, not only on
+ranking quality, so a "foreign" calibration map can by chance place that
+threshold better or worse than the dataset's own. \textbf{Calibration transfer
+is the clearest domain-shift casualty, and UBnormal is the worst source}: fits
+from UBnormal onto CHAD and Avenue reach $\ece=0.345$ and $0.318$ respectively
+-- three to six times the corresponding in-domain values ($0.053$, $0.127$) --
+while ShanghaiTech- and CHAD-sourced calibration transfer far better (e.g.\
+ShanghaiTech$\to$UBnormal: $\ece=0.049$, close to UBnormal's own $0.046$). We
+attribute this to UBnormal's staged, synthetic scenarios producing a belief
+distribution shaped differently from the three real-CCTV-style benchmarks.
+\textbf{Practical implication:} an operator moving \method{} to a new site
+should re-fit M3 (a lightweight, label-cheap step, \S\ref{sec:m3}) rather than
+reuse a calibration map from a dissimilar source site, and should regard a
+foreign calibration map's $\ece$, not just its AUC, as the thing to check
+before trusting it.
 
 \subsection{Cost}
 \input{tables/cost}
