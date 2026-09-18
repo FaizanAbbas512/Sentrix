@@ -467,9 +467,15 @@ file linked from their code repository) as a possible shortcut around a GPU
 pass, and confirmed by inspection that it contains YOLO-style bounding-box
 tracks (class IDs 0/1/2/3/5/7 -- COCO person/vehicle) with \emph{no keypoints}
 -- sufficient for none of M1 (needs per-joint confidence) or the FALL/FIGHT
-cues (need limb geometry), so it does not remove the need for a GPU
-pose-extraction pass over the raw video, which remains outside a CPU-only
-session's scope.
+cues (need limb geometry). We also checked whether at least a small,
+honestly-labelled subset of test clips could be pose-extracted without the
+full download: the official video release turned out to be split across a
+106-volume \texttt{.7z} multi-part archive with no per-clip boundaries, so
+even one clip requires fetching and reassembling the entire 76.6\,GB
+archive first -- there is no partial-download path. Both routes checked and
+ruled out, a real pose-based result on this benchmark needs a GPU
+pose-extraction pass over the full video release, which remains outside a
+CPU-only session's scope.
 
 \paragraph{Pose extraction}
 No video or GPU step was needed for three of the four: ShanghaiTech and
