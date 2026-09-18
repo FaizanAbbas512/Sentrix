@@ -419,6 +419,12 @@ def main():
     ap.add_argument("--ubnormal-stgnf", nargs=2, metavar=("POSE_DIR", "GT_DIR"),
                     help="UBnormal as released in the STG-NF bundle (inverted "
                          "gt polarity + different stem rule -- not auto-detected)")
+    ap.add_argument("--ubnormal-auto", default=None, metavar="ROOT",
+                    help="UBnormal root dir: auto-detects pose_dir/gt_dir like --auto, "
+                         "but always applies the ground-truth inversion. Use this "
+                         "instead of --auto for UBnormal -- --auto silently loads it "
+                         "with the wrong gt polarity (it looks like a normal GEPC/"
+                         "STG-NF dataset to the generic detector).")
     ap.add_argument("--chad", default=None, metavar="ROOT",
                     help="CHAD dataset root (contains annotations/, anomaly_labels/, splits/)")
     ap.add_argument("--fps", type=float, default=24.0, help="stream fps for real datasets")
@@ -443,6 +449,9 @@ def main():
         tag = args.tag or "shanghaitech_hr"
     elif args.ubnormal_stgnf:
         clips = D.load_ubnormal_stgnf(args.ubnormal_stgnf[0], args.ubnormal_stgnf[1], fps=args.fps)
+        tag = args.tag or "ubnormal"
+    elif args.ubnormal_auto:
+        clips = D.load_ubnormal_stgnf_auto(args.ubnormal_auto, fps=args.fps)
         tag = args.tag or "ubnormal"
     elif args.chad:
         clips = D.load_chad(args.chad, fps=args.fps)

@@ -456,6 +456,58 @@ def load_ubnormal_stgnf(pose_dir, gt_dir, fps=30, split="test"):
     return clips
 
 
+def load_ubnormal_stgnf_auto(root, fps=30, split="test"):
+    """
+    Auto-detect UBnormal's pose_dir/gt_dir under `root` and load them
+    through load_ubnormal_stgnf so the ground-truth inversion is always
+    applied.
+
+    Does NOT reuse load_any's generic GEPC/gt ranking: the real STG-NF
+    Drive bundle ships ShanghaiTech and UBnormal side by side in the SAME
+    zip, so "the GEPC dir with the most files" or "the .npy gt dir" can
+    silently resolve to ShanghaiTech's own directories instead of
+    UBnormal's (verified while wiring this: on the combined bundle, that
+    naive ranking picked ShanghaiTech/pose/test and ShanghaiTech/gt/
+    test_frame_mask outright -- 0 UBnormal ground truth, pos=0 everywhere,
+    the same silent-corruption failure mode this function exists to avoid).
+    Instead we identify UBnormal's own directories by their distinctive
+    file-naming convention: pose files named
+    "<abnormal|normal>_..._alphapose_tracked_person.json", and gt files
+    named "<same stem>_tracks.txt" (an .npy array despite the .txt name,
+    see load_ubnormal_stgnf) -- so an .npy-only gt scan never finds it either.
+    """
+    pose_dir = None
+    for d in _all_dirs(root):
+        names = [os.path.basename(p) for p in glob.glob(os.path.join(d, "*.json"))]
+        matches = sum(1 for n in names
+                      if n.startswith(("abnormal_", "normal_"))
+                      and "alphapose_tracked_person" in n)
+        if matches >= 2:
+            if pose_dir is None or matches > pose_dir[1]:
+                pose_dir = (d, matches)
+    if pose_dir is None:
+        raise SystemExit(
+            f"load_ubnormal_stgnf_auto: no UBnormal-shaped pose dir found under {root} "
+            "(expected <abnormal|normal>_..._alphapose_tracked_person.json files)")
+    pose_dir = pose_dir[0]
+
+    gt_dir = None
+    for d in _all_dirs(root):
+        n_tracks = len(glob.glob(os.path.join(d, "*_tracks.txt")))
+        if n_tracks >= 2:
+            if gt_dir is None or n_tracks > gt_dir[1]:
+                gt_dir = (d, n_tracks)
+    if gt_dir is None:
+        raise SystemExit(
+            f"load_ubnormal_stgnf_auto: no UBnormal-shaped gt dir found under {root} "
+            "(expected <stem>_tracks.txt files)")
+    gt_dir = gt_dir[0]
+
+    print(f"[load_ubnormal_stgnf_auto] pose_dir={os.path.relpath(pose_dir, root)}  "
+          f"gt_dir={os.path.relpath(gt_dir, root)}  (inverted GT applied)")
+    return load_ubnormal_stgnf(pose_dir, gt_dir, fps=fps, split=split)
+
+
 def convert_avenue_mat_gt(mask_dir, out_dir):
     """
     CUHK Avenue ground truth ships as ground_truth_demo/testing_label_mask/
@@ -687,6 +739,16 @@ def load_any(root, fps=24, split="test"):
     if gepc:
         gepc.sort(key=lambda x: (_rank_test(x[0]), x[1]), reverse=True)
         pose_dir = gepc[0][0]
+        names = [os.path.basename(p) for p in glob.glob(os.path.join(pose_dir, "*.json"))]
+        if any(n.startswith(("abnormal_", "normal_")) and "alphapose_tracked_person" in n
+               for n in names):
+            raise SystemExit(
+                f"load_any: {os.path.relpath(pose_dir, root)} looks like UBnormal's "
+                "STG-NF release (abnormal_*/normal_*_alphapose_tracked_person.json), "
+                "not a generic GEPC dataset. --auto would load it with the ground-truth "
+                "polarity backwards (UBnormal's convention is the OPPOSITE of "
+                "ShanghaiTech's -- see load_ubnormal_stgnf's docstring). "
+                "Use --ubnormal-auto <root> instead of --auto for UBnormal.")
         print(f"[load_any] GEPC  pose_dir={os.path.relpath(pose_dir, root)}  "
               f"gt_dir={os.path.relpath(gt_dir, root) if gt_dir else None}")
         return load_gepc_json(pose_dir, gt_dir, fps=fps, split=split)
