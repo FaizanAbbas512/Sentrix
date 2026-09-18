@@ -52,6 +52,7 @@ def score_clip(clip, cfg, use_reliability=True):
     fus = EvidenceFusion(cfg)
 
     belief = np.zeros(clip.n_frames, float)
+    belief_noisyor = np.zeros(clip.n_frames, float)   # fusion-variant ablation
     r_series = np.ones(clip.n_frames, float)
     strength_mat = np.zeros((clip.n_frames, len(CUE_NAMES)), float)
     conflict = np.zeros(clip.n_frames, float)
@@ -77,6 +78,7 @@ def score_clip(clip, cfg, use_reliability=True):
             r_pose = 1.0
 
         fr = fus.fuse(strengths, r_pose=r_pose)
+        belief_noisyor[t] = fus.fuse_noisy_or(strengths, r_pose=r_pose)
         lat_ms[t] = (time.perf_counter() - t0) * 1000.0
 
         belief[t] = fr.bel_A
@@ -86,7 +88,8 @@ def score_clip(clip, cfg, use_reliability=True):
             strength_mat[t, i] = strengths[name]
 
     return {
-        "belief": belief, "r": r_series, "strengths": strength_mat,
+        "belief": belief, "belief_noisyor": belief_noisyor,
+        "r": r_series, "strengths": strength_mat,
         "conflict": conflict, "latency_ms": lat_ms,
     }
 
@@ -99,6 +102,11 @@ def _weighted_sum_scores(strength_mat, cfg):
     vec = np.array([w.get(n, 1) for n in CUE_NAMES], float)
     vec = vec / max(vec.sum(), 1e-9)
     return np.clip(strength_mat @ vec, 0, 1)
+
+
+def _max_cue_scores(strength_mat):
+    """B4: the single strongest cue, no fusion at all."""
+    return np.clip(strength_mat.max(axis=1), 0, 1)
 
 
 def _fit_sklearn(kind, X, y):
@@ -186,6 +194,12 @@ def run(clips, cfg, tag="synthetic", budgets=(2.0, 5.0, 10.0),
     ws_cal = Calibrator(method).fit(_weighted_sum_scores(X_cal, cfg), y_cal)
     p_ws = ws_cal.predict(_weighted_sum_scores(X_te, cfg))
 
+    b4_cal = Calibrator(method).fit(_max_cue_scores(X_cal), y_cal)      # B4: strongest cue
+
+    bel_cal_nor, _, _ = stack(calib, "calm", "belief_noisyor")          # fusion-variant ablation
+    bel_te_nor, _, _ = stack(test, "calm", "belief_noisyor")
+    nor_cal = Calibrator(method).fit(bel_cal_nor, y_cal)
+
     lr = _fit_sklearn("logistic", X_cal, y_cal)
     gb = _fit_sklearn("gbt", X_cal, y_cal)
     p_lr = lr.predict_proba(X_te)[:, 1] if lr is not None else None
@@ -235,10 +249,15 @@ def run(clips, cfg, tag="synthetic", budgets=(2.0, 5.0, 10.0),
     prob_noM1 = {c.name: cal_n.predict(scored[c.name]["noM1"]["belief"]) for c in test}
     prob_ws = {c.name: ws_cal.predict(_weighted_sum_scores(scored[c.name]["calm"]["strengths"], cfg))
                for c in test}
+    prob_b4 = {c.name: b4_cal.predict(_max_cue_scores(scored[c.name]["calm"]["strengths"]))
+               for c in test}
+    prob_nor = {c.name: nor_cal.predict(scored[c.name]["calm"]["belief_noisyor"]) for c in test}
 
     streams = [eval_stream(prob_calm, "CALM-VAD (M1+M2+M3)"),
                eval_stream(prob_noM1, "ablation -M1"),
-               eval_stream(prob_ws, "B0 weighted-sum (SENTRIX)")]
+               eval_stream(prob_nor, "ablation: fusion=noisy-OR"),
+               eval_stream(prob_ws, "B0 weighted-sum (SENTRIX)"),
+               eval_stream(prob_b4, "B4 strongest cue")]
     if p_lr is not None:
         off = 0
         prob_lr = {}
@@ -251,6 +270,17 @@ def run(clips, cfg, tag="synthetic", budgets=(2.0, 5.0, 10.0),
         for c in test:
             prob_gb[c.name] = p_gb[off:off + c.n_frames]; off += c.n_frames
         streams.append(eval_stream(prob_gb, "B2 gradient-boosted"))
+
+    # ---- calibration-variant ablation: same belief arrays, 3 calibrators ----
+    calib_variants = {}
+    for cm in ("isotonic", "platt", "temperature"):
+        try:
+            cv = Calibrator(cm).fit(bel_cal, y_cal)
+            rep = cv.report(bel_te, y_te)
+            calib_variants[cm] = {"ece": rep["ece_cal"], "aece": rep["aece_cal"],
+                                  "brier": rep["brier_cal"]}
+        except Exception as e:
+            calib_variants[cm] = {"error": str(e)}
 
     # ---- M4: pick tau on the NORMAL calibration stream, verify on held-out normal
     from .risk_control import count_alarm_events
@@ -297,6 +327,7 @@ def run(clips, cfg, tag="synthetic", budgets=(2.0, 5.0, 10.0),
         "n_clips": len(clips), "n_calib": len(calib), "n_test": len(test),
         "fps": fps,
         "calibration": {**cal_report, "ece_no_calibration": ece_noCal},
+        "calibration_variants": calib_variants,
         "streams": streams,
         "risk_control_M4": m4,
         "cost": cost,
@@ -329,6 +360,13 @@ def _render(r) -> str:
     L.append(f"    ECE  raw -> cal      : {c['ece_raw']:.4f} -> {c['ece_cal']:.4f}")
     L.append(f"    adaptive-ECE r -> c  : {c['aece_raw']:.4f} -> {c['aece_cal']:.4f}")
     L.append(f"    Brier raw -> cal     : {c['brier_raw']:.4f} -> {c['brier_cal']:.4f}")
+    if r.get("calibration_variants"):
+        L.append("    calibration-variant ablation (same belief, different map):")
+        for cm, v in r["calibration_variants"].items():
+            if "error" in v:
+                L.append(f"      {cm:<12}: skipped ({v['error']})")
+            else:
+                L.append(f"      {cm:<12}: ECE {v['ece']:.4f}  aECE {v['aece']:.4f}  Brier {v['brier']:.4f}")
     L.append("-" * 66)
     L.append("  DETECTION + ALARM LOAD (mean over test clips)")
     for s in r["streams"]:

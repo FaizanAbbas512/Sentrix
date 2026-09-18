@@ -216,6 +216,26 @@ class EvidenceFusion:
             r_pose=r_pose,
         )
 
+    def fuse_noisy_or(self, strengths: dict[str, float], r_pose: float = 1.0) -> float:
+        """
+        Fusion-variant ablation: replace Dempster's rule with the classic
+        noisy-OR combination, keeping the same reliability discounting so the
+        comparison isolates the combination rule, not M1. Each active cue is
+        treated as an independent probability of anomaly
+        p_i = strength_i * r_cue_i * r_pose, and
+            P(A) = 1 - prod_i (1 - p_i).
+        Returns a belief-like scalar in [0, 1] (not a full MassFunction --
+        noisy-OR has no notion of ignorance/conflict to report).
+        """
+        r_pose = _clip01(r_pose)
+        p_not_a = 1.0
+        for name, s in strengths.items():
+            if s <= 0:
+                continue
+            p_i = _clip01(s) * self.r_cue.get(name, 0.7) * r_pose
+            p_not_a *= (1.0 - p_i)
+        return float(1.0 - p_not_a)
+
 
 def _clip01(x: float) -> float:
     return 0.0 if x < 0 else 1.0 if x > 1 else float(x)
