@@ -699,6 +699,17 @@ def load_any(root, fps=24, split="test"):
               f"gt_dir={os.path.relpath(gt_dir, root) if gt_dir else None}")
         return load_trajectory_csv(traj_dir, gt_dir, fps=fps, split=split)
 
+    # CHAD: a folder with sibling annotations/*.pkl + anomaly_labels/*.npy
+    for d, _, _ in os.walk(root):
+        if (os.path.basename(d) == "annotations" and glob.glob(f"{d}/*.pkl")
+                and os.path.isdir(os.path.join(os.path.dirname(d), "anomaly_labels"))):
+            chad_root = os.path.dirname(d)
+            print(f"[load_any] CHAD  root={os.path.relpath(chad_root, root) or '.'}")
+            sf = "splits/test_split_1.txt"
+            if not os.path.exists(os.path.join(chad_root, sf)):
+                sf = None
+            return load_chad(chad_root, fps=fps, split=split, split_file=sf)
+
     raise SystemExit(
         f"load_any: no pose data found under {root}.\n"
         "  expected: a folder of per-clip *.json (GEPC/STG-NF), or\n"
