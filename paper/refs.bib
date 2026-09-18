@@ -1,15 +1,27 @@
 % ============================================================
 %  CALM-VAD — bibliography
-%  All entries verified against arXiv / publisher during the
-%  Sept 2026 literature pass. Check page numbers / DOIs before
-%  camera-ready.
+%  Every entry's title, venue and existence re-verified individually
+%  against arXiv/ACM/Elsevier/PubMed during the Sept 18 2026 pass
+%  (fetched each arXiv abstract page or publisher listing directly;
+%  see git history for the fetch results). All checked out as real,
+%  accurately-described papers -- the only defects found were
+%  bibliographic hygiene, not fabrication: several entries had been
+%  filed with a placeholder "Anonymous" author (now filled in with
+%  the real author lists found), and two Applied Ergonomics entries
+%  and one ISWA entry had a wrong volume/year/journal name (now
+%  corrected). One entry (edgevadsurvey2026) still lists Anonymous:
+%  its title/venue/DOI are confirmed but the author list sits behind
+%  a paywalled abstract this pass could not get past -- resolve
+%  before camera-ready, do not submit with Anonymous as an author.
+%  Two never-cited entries (vad10years2024, vadinthewild2024) were
+%  removed. Still worth a page-number/DOI check before camera-ready.
 % ============================================================
 
 % ---------- the deployment-gap critiques (core motivation) ----------
 @article{benchmarkauc2026,
   title  = {Benchmark {AUC} Is Not Deployable Reliability: A Cross-Dataset
             Audit of Off-the-Shelf Features for Surveillance Video Anomaly Detection},
-  author = {{Anonymous (under review)}},
+  author = {Rashidi, Mohammadreza},
   journal = {arXiv preprint arXiv:2606.29506},
   year   = {2026}
 }
@@ -17,17 +29,10 @@
 @article{framestoevents2026,
   title  = {From Frames to Events: Rethinking Evaluation in Human-Centric
             Video Anomaly Detection},
-  author = {{Anonymous (under review)}},
+  author = {Rashvand, Narges and Yao, Shanle and Danesh Pazho, Armin and
+            Rahimi Ardabili, Babak and Tabkhi, Hamed},
   journal = {arXiv preprint arXiv:2604.09327},
   year   = {2026}
-}
-
-@article{vadinthewild2024,
-  title  = {Evaluating the Effectiveness of Video Anomaly Detection in the Wild:
-            Online Learning and Inference for Real-world Deployment},
-  author = {{Anonymous}},
-  journal = {arXiv preprint arXiv:2404.18747},
-  year   = {2024}
 }
 
 % ---------- pose / skeleton VAD ----------
@@ -41,7 +46,7 @@
 @article{graphjigsaw2024,
   title   = {Graph-Jigsaw Conditioned Diffusion Model for Skeleton-based
              Video Anomaly Detection},
-  author  = {{Anonymous}},
+  author  = {Karami, Ali and Ho, Thi Kieu Khanh and Armanfard, Narges},
   journal = {arXiv preprint arXiv:2403.12172},
   year    = {2024}
 }
@@ -49,7 +54,7 @@
 @article{actionhints2025,
   title   = {Action Hints: Semantic Typicality and Context Uniqueness for
              Generalizable Skeleton-based Video Anomaly Detection},
-  author  = {{Anonymous}},
+  author  = {Tang, Canhui and Zhou, Sanping and Shi, Haoyue and Wang, Le},
   journal = {arXiv preprint arXiv:2509.11058},
   year    = {2025}
 }
@@ -57,7 +62,7 @@
 @article{seeker2025,
   title   = {Sequential Keypoint Density Estimator: an Overlooked Baseline of
              Skeleton-based Video Anomaly Detection},
-  author  = {{Anonymous}},
+  author  = {Delic, Anja and Grcic, Matej and Segvic, Sinisa},
   journal = {arXiv preprint arXiv:2506.18368},
   year    = {2025}
 }
@@ -65,23 +70,27 @@
 @inproceedings{poseChallenges2023,
   title     = {Understanding the Challenges and Opportunities of Pose-based
                Anomaly Detection},
-  author    = {{Anonymous}},
-  booktitle = {Proc. ACM Int. Workshop},
+  author    = {Alinezhad Noghre, Ghazal and Danesh Pazho, Armin and
+               Katariya, Vinit and Tabkhi, Hamed},
+  booktitle = {Proc. 8th Int. Workshop on Sensor-Based Activity Recognition
+               and Artificial Intelligence (iWOAR), ACM},
   year      = {2023},
   doi       = {10.1145/3615834.3615844}
 }
 
 @article{bboxtraj2026,
   title   = {Bounding-Box Trajectories Matter for Video Anomaly Detection},
-  author  = {{Anonymous}},
+  author  = {Song, Inpyo and Lee, Jangwon},
   journal = {arXiv preprint arXiv:2605.21957},
-  year    = {2026}
+  year    = {2026},
+  note    = {To appear, ECCV 2026}
 }
 
 @article{reliabilityproto2026,
   title   = {Reliability-Aware Prototype Calibration for Frozen Pose-Flow
              Video Anomaly Detection},
-  author  = {{Anonymous (under review)}},
+  author  = {Dong, Ning and Su, Yingna and Dong, Xin and Jiao, Ziyun and
+             Guo, Xinnian and Pan, Zhuangzhuang},
   journal = {arXiv preprint arXiv:2606.20312},
   year    = {2026}
 }
@@ -90,24 +99,34 @@
 @article{yoloposeclip2026,
   title   = {Real-Time Video Anomaly Detection Using {YOLO} Pose Estimation
              and {CLIP}-Based Semantic Scoring},
-  author  = {{Anonymous}},
+  author  = {Warnasooriya, Vanodhya G. and Hajian, Amir and Ruangsang, Watchara
+             and Aramvith, Supavadee},
   journal = {arXiv preprint arXiv:2608.31074},
-  year    = {2026}
+  year    = {2026},
+  note    = {Also: Proc. 9th IEEE Int. Conf. on Multimedia Information
+             Processing and Retrieval (MIPR 2026)}
 }
 
 @article{edgevadsurvey2026,
   title   = {Video Anomaly Detection for Edge-based {IoT} Systems: A Survey of
              Input Modalities and Real-time Applications},
   author  = {{Anonymous}},
-  journal = {Machine Learning with Applications (Elsevier)},
+  journal = {Intelligent Systems with Applications (Elsevier)},
   year    = {2026},
-  note    = {ScienceDirect S2667305326000104}
+  doi     = {10.1016/j.iswa.2026.200635},
+  note    = {ScienceDirect S2667305326000104. Title/venue/DOI verified;
+             author list is behind a paywalled abstract and NOT yet verified
+             -- confirm before camera-ready (do not cite as Anonymous in the
+             final submission).}
 }
 
 @article{nsvad2024,
   title   = {Networking Systems for Video Anomaly Detection: A Tutorial and Survey},
-  author  = {Liu, Jing and others},
-  journal = {arXiv preprint arXiv:2405.10347},
+  author  = {Liu, Jing and Liu, Yang and Lin, Jieyu and Li, Jielin and
+             Cao, Liang and Sun, Peng and Hu, Bo and Song, Liang and
+             Boukerche, Azzedine and Leung, Victor C. M.},
+  journal = {ACM Computing Surveys},
+  note    = {arXiv preprint arXiv:2405.10347},
   year    = {2024}
 }
 
@@ -115,7 +134,7 @@
 @inproceedings{vera2025,
   title     = {{VERA}: Explainable Video Anomaly Detection via Verbalized
                Learning of Vision-Language Models},
-  author    = {{Anonymous}},
+  author    = {Ye, Muchao and Liu, Weiyang and He, Pan},
   booktitle = {Proc. IEEE/CVF Conf. on Computer Vision and Pattern Recognition (CVPR)},
   year      = {2025}
 }
@@ -123,22 +142,17 @@
 @article{deepusevision2025,
   title   = {Transformer-Driven Multimodal Fusion for Explainable
              Suspiciousness Estimation in Visual Surveillance},
-  author  = {{Anonymous}},
+  author  = {Yadav, Kuldeep Singh and Kumar, Lalan},
   journal = {arXiv preprint arXiv:2512.09311},
   year    = {2025}
 }
 
 % ---------- surveys ----------
-@article{vad10years2024,
-  title   = {Video Anomaly Detection in 10 Years: A Survey and Outlook},
-  author  = {{Anonymous}},
-  journal = {arXiv preprint arXiv:2405.19387},
-  year    = {2024}
-}
-
 @article{privacyvadsurvey2024,
   title   = {Privacy-Preserving Video Anomaly Detection: A Survey},
-  author  = {{Anonymous}},
+  author  = {Liu, Yang and Liu, Siao and Zhu, Xiaoguang and Li, Jielin and
+             Yang, Hao and Teng, Liangyu and Guo, Juncen and Wang, Yan and
+             Yang, Dingkang and Liu, Jing},
   journal = {arXiv preprint arXiv:2411.14565},
   year    = {2024}
 }
@@ -198,17 +212,20 @@
 @article{seizurercps2023,
   title   = {Utilizing Risk-Controlling Prediction Calibration to Reduce False
              Alarm Rates in Epileptic Seizure Prediction},
-  author  = {{Anonymous}},
+  author  = {Segal, G. and Keidar, N. and Lotan, R. M. and
+             Romano, Y. and Herskovitz, M. and Yaniv, Y.},
   journal = {Frontiers in Neuroscience},
   volume  = {17},
+  pages   = {1184990},
   year    = {2023}
 }
 
 @article{conformalcps2026,
   title   = {Conformal Machine Learning for Reliable Anomaly Detection in
              Industrial Cyber-Physical Systems},
-  author  = {{Anonymous}},
+  author  = {Yuan, Shuaiqi and Li, Jipu and Wang, Chunjin and Zhang, Xiaoge},
   journal = {Reliability Engineering \& System Safety (Elsevier)},
+  volume  = {274},
   year    = {2026}
 }
 
@@ -264,8 +281,10 @@
 @article{alertfatigue2025,
   title   = {Alert Fatigue in Security Operations Centres: Research Challenges
              and Opportunities},
-  author  = {{Anonymous}},
+  author  = {Tariq, Shahroz and Chhetri, Mohan Baruwal and Nepal, Surya and
+             Paris, C{\'e}cile},
   journal = {ACM Computing Surveys},
+  volume  = {57},
   year    = {2025},
   doi     = {10.1145/3723158}
 }
@@ -273,22 +292,23 @@
 @article{cctvvigilance2014,
   title   = {Work Exposure and Vigilance Decrements in Closed Circuit
              Television Surveillance},
-  author  = {{Anonymous}},
+  author  = {Donald, Fiona and Donald, Craig and Thatcher, Andrew},
   journal = {Applied Ergonomics},
-  volume  = {45},
-  number  = {5},
-  year    = {2014}
+  volume  = {47},
+  pages   = {220--228},
+  year    = {2015}
 }
 
 @article{cctvsemiauto2012,
   title   = {Semi-Automated {CCTV} Surveillance: The Effects of System
              Confidence, System Accuracy and Task Complexity on Operator
              Vigilance, Reliance and Workload},
-  author  = {{Anonymous}},
+  author  = {Dadashi, N. and Stedmon, A. W. and Pridmore, T. P.},
   journal = {Applied Ergonomics},
   volume  = {44},
   number  = {5},
-  year    = {2012}
+  pages   = {730--738},
+  year    = {2013}
 }
 
 % ---------- benchmarks ----------

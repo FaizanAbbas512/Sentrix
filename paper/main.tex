@@ -214,13 +214,17 @@ autoregressive density \cite{seeker2025}, or cross-domain semantic cues
 \cite{actionhints2025}. These produce a single unsupervised score, are
 evaluated by frame AUC, and---as \cite{poseChallenges2023,bboxtraj2026}
 document---degrade when pose estimation fails. The reliability-aware prototype
-method \cite{reliabilityproto2026} is the closest prior work: it weights a
-single pose-flow prototype model's distance by mean keypoint confidence and
-applies temperature scaling. \method{}
-differs in three ways: reliability enters as \emph{evidence discounting across
-a fused, heterogeneous cue set} with an explicit conflict term; the output is
-risk-controlled, not only temperature-scaled; and it is evaluated for alarm
-load and event localisation, not frame AUC.
+calibration method \cite{reliabilityproto2026} is the closest prior work: for
+a single frozen pose-flow backbone, it adds a nearest-prototype deviation
+term to the flow score, gated by keypoint confidence, and reports frame
+AUROC gains averaging 2.03 points across eight backbone-dataset pairs (no
+event-level, false-alarm, or calibration-error metric is reported).
+\method{} differs in three ways: reliability enters as \emph{evidence
+discounting across a fused, heterogeneous cue set} with an explicit conflict
+term, not a single-backbone score correction; the output is a post-hoc
+\emph{probability} with a distribution-free alarm-budget guarantee, not a
+rank-only AUROC correction; and it is evaluated for alarm load, event
+localisation and calibration error, not frame AUC alone.
 
 \subsection{Lightweight and edge VAD}
 Edge-oriented work targets latency and memory, often with a cheap first stage
@@ -457,8 +461,15 @@ Four are complete: ShanghaiTech \cite{shanghaitech2017} and UBnormal
 \cite{ubnormal2022} (official test splits, 213 and 211 clips), CHAD
 \cite{chad2023} (official \texttt{test\_split\_1}, 134 clips), and Avenue
 \cite{avenue2013} (21 test clips). \pend{NWPU-Campus \cite{nwpu2023} is
-pending} -- it ships only raw video (76.6\,GB, no released pose annotations),
-so it needs a dedicated GPU pose-extraction pass we have not yet run.
+pending}. Its official release ships only raw video (76.6\,GB); we also
+checked the original authors' own released tracking bundle (a single Drive
+file linked from their code repository) as a possible shortcut around a GPU
+pass, and confirmed by inspection that it contains YOLO-style bounding-box
+tracks (class IDs 0/1/2/3/5/7 -- COCO person/vehicle) with \emph{no keypoints}
+-- sufficient for none of M1 (needs per-joint confidence) or the FALL/FIGHT
+cues (need limb geometry), so it does not remove the need for a GPU
+pose-extraction pass over the raw video, which remains outside a CPU-only
+session's scope.
 
 \paragraph{Pose extraction}
 No video or GPU step was needed for three of the four: ShanghaiTech and
