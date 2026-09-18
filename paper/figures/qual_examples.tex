@@ -1,0 +1,63 @@
+% Two real qualitative evidence records from Avenue test clips, computed by
+% an actual run of calm/cues.py + calm/reliability.py + calm/evidence.py over
+% the real per-frame poses (data/pose/avenue.json); snapshots are real decoded
+% frames from the corresponding Avenue test videos (paper/figures/qual/).
+\begin{figure}[t]
+\centering
+% ---- (a) a genuine, correctly-raised alarm --------------------------------
+\begin{minipage}{0.45\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/qual/clip01_f965.png}
+\end{minipage}\hfill
+\begin{minipage}{0.47\linewidth}
+  \centering\footnotesize
+  \resizebox{\linewidth}{!}{%
+  \begin{tabular}{@{}ll@{}}
+  \toprule
+  \multicolumn{2}{l}{\textbf{(a) clip 01, frame 965 (in GT)}}\\
+  \midrule
+  $r_{\text{pose}}$      & $0.781$ \\
+  LOITERING strength     & $1.000$ \\
+  belief $\mathrm{bel}(A)$ & $\mathbf{0.627}$ \\
+  plausibility $\mathrm{pl}(A)$ & $0.944$ \\
+  conflict $K$           & $0.100$ \\
+  \bottomrule
+  \end{tabular}}
+\end{minipage}
+
+\vspace{6pt}
+% ---- (b) a benign scene that partially trips a cue, tempered by M1 -------
+\begin{minipage}{0.45\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/qual/clip15_f939.png}
+\end{minipage}\hfill
+\begin{minipage}{0.47\linewidth}
+  \centering\footnotesize
+  \resizebox{\linewidth}{!}{%
+  \begin{tabular}{@{}ll@{}}
+  \toprule
+  \multicolumn{2}{l}{\textbf{(b) clip 15, frame 939 (outside GT)}}\\
+  \midrule
+  $r_{\text{pose}}$      & $0.834$ \\
+  LOITERING strength     & $1.000$ \\
+  belief w/ M1           & $\mathbf{0.674}$ \\
+  belief w/o M1 ($-$M1)  & $0.828$ \\
+  conflict $K$           & $0.106$ \\
+  \bottomrule
+  \end{tabular}}
+\end{minipage}
+\caption{Two real evidence records from Avenue (raw fused belief
+$\mathrm{bel}(A)$, pre-calibration). (a) A person standing still near a
+stairwell with a large backpack for an extended dwell, inside a labeled
+anomaly window: LOITERING fires at full strength and the fused belief
+correctly clears $0.5$. (b) A person standing at an information board
+outside any labeled anomaly window -- an everyday scene Avenue does not
+call anomalous: LOITERING still fires (dwell time alone cannot distinguish
+the two scenes), but a partially degraded skeleton ($r_{\text{pose}}=0.834$,
+from viewing angle and partial occlusion) discounts the belief from $0.828$
+(what the undiscounted, $-$M1 pipeline would output) to $0.674$ -- the
+mechanism in \S\ref{sec:m1}--\S\ref{sec:m2} acting on a real frame, not a
+synthetic one. Both frames carry non-trivial conflict $K\!\approx\!0.10$,
+reflecting that LOITERING is the only cue active in either case.}
+\label{fig:qual}
+\end{figure}

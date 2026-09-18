@@ -1,0 +1,23 @@
+% Calibration-variant ablation: isotonic (\method{} default) vs. Platt vs.
+% temperature scaling, same fused belief throughout, all four completed
+% benchmarks. Source: results/calm_report_{shanghaitech,ubnormal,chad,avenue}_v2.json.
+\begin{table}[t]
+\centering
+\caption{Calibration-variant ablation: expected calibration error ($\ece$)
+of three post-hoc maps fit on the identical fused belief. Lower is better;
+\textbf{bold} marks the best map per dataset.}
+\label{tab:ablationcalib}
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.15}
+\footnotesize
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Dataset & isotonic (default) & Platt & temperature \\
+\midrule
+ShanghaiTech & \textbf{0.030} & 0.561 & 0.195 \\
+UBnormal     & \textbf{0.046} & 0.471 & 0.275 \\
+CHAD         & \textbf{0.053} & 0.083 & 0.082 \\
+Avenue       & \textbf{0.127} & 0.284 & 0.170 \\
+\bottomrule
+\end{tabular}
+\end{table}

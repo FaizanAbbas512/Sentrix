@@ -1,0 +1,25 @@
+% Fusion-variant (Dempster vs. noisy-OR) and B4 (single strongest cue, no
+% fusion) ablation, all four completed benchmarks. Source:
+% results/calm_report_{shanghaitech,ubnormal,chad,avenue}_v2.json.
+\begin{table}[t]
+\centering
+\caption{Fusion-variant ablation: Dempster's rule (\method{} default) vs.\
+noisy-OR combination, and B4 (strongest single cue, no fusion at all), same
+M1 discounting and M3 calibration throughout.}
+\label{tab:ablationfusion}
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.15}
+\footnotesize
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+ & \multicolumn{2}{c}{Dempster (full)} & \multicolumn{2}{c}{noisy-OR} & \multicolumn{2}{c}{B4 (no fusion)} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+Dataset & AUC & $\bar F_1$ & AUC & $\bar F_1$ & AUC & $\bar F_1$ \\
+\midrule
+ShanghaiTech & 0.554 & 0.113 & 0.554 & 0.113 & 0.558 & 0.123 \\
+UBnormal     & 0.538 & 0.570 & 0.538 & 0.570 & 0.537 & 0.570 \\
+CHAD         & 0.590 & 0.544 & 0.589 & 0.544 & 0.583 & 0.544 \\
+Avenue       & 0.491 & 0.000 & 0.491 & 0.000 & 0.489 & 0.000 \\
+\bottomrule
+\end{tabular}
+\end{table}

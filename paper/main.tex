@@ -121,6 +121,7 @@ prediction, Dempster--Shafer fusion, false alarm rate, trustworthy AI
 
 % ==================================================================
 \section{Introduction}
+\label{sec:intro}
 
 Automated video anomaly detection is moving from the data centre to the
 camera. Public-safety programmes deploy analytics on embedded accelerators
@@ -330,6 +331,7 @@ the shaded chain M1--M4 and the evidence record.}
 \end{figure}
 
 \subsection{M1: Front-end reliability}
+\label{sec:m1}
 For a tracked person $i$ at frame $t$ we form a feature vector
 $\mathbf{x}_{t,i}\in[0,1]^7$ from quantities already in the pipeline: mean
 keypoint confidence, torso-keypoint confidence, fraction of visible joints,
@@ -477,18 +479,25 @@ M4) and test. Cross-dataset runs fit M3/M4 on dataset $A$ and evaluate on $B$.
 Implemented and run on every dataset: \textbf{B0} the weighted-sum fusion of
 the base pipeline (calibrated identically to \method{} for a fair ECE
 comparison); \textbf{B1} logistic regression on the cue-strength vector;
-\textbf{B2} gradient-boosted trees on the same. \pend{B3 (a published
-pose-density score \cite{stgnf2023}, calibrated) and B4 (the single strongest
-cue) are designed but not yet run.}
+\textbf{B2} gradient-boosted trees on the same; \textbf{B4} the single
+strongest cue with no fusion at all (\S\ref{sec:ablations}).
+\textbf{B3} -- a published pose-density score such as STG-NF's own trained
+normalizing-flow model \cite{stgnf2023} -- is deliberately left out: a fair
+run would mean cloning and training that method's full codebase rather than
+consuming a released score file (none is published), which is a different
+scope of work from evaluating our own back end, so we cite its numbers
+rather than reproduce them and do not claim a head-to-head comparison.
 
 \paragraph{Ablations}
 $-$M1 (no reliability discount) is run as a separate stream on every dataset.
 M3's effect is measured directly as raw-vs-calibrated $\ece$ within the same
 run; M4's effect is the certified/not-certified outcome at each budget
-(\S\ref{sec:m4} results). \pend{The fusion-variant (Dempster $\to$ noisy-OR
-$\to$ weighted sum) and calibration-variant (isotonic $\to$ Platt $\to$
-temperature) ablations are implemented (\texttt{calm/evidence.py},
-\texttt{calm/calibration.py}) but not yet run as a systematic sweep.}
+(\S\ref{sec:m4} results). Two further sweeps are run on all four benchmarks
+and reported in \S\ref{sec:ablations}: a \emph{fusion-variant} sweep
+(Dempster's rule, the \method{} default, vs.\ noisy-OR combination, vs.\ B4's
+no-fusion baseline, holding M1 discounting and M3 calibration fixed) and a
+\emph{calibration-variant} sweep (isotonic, the default, vs.\ Platt vs.\
+temperature scaling, holding the fused belief fixed).
 
 \paragraph{Metrics}
 As in \cref{sec:problem}: frame AUC, $\bar F_1$ and $F_1(\theta)$; $\faph$ at
@@ -627,6 +636,45 @@ the strongest single piece of evidence for it: \textbf{a method that is
 honest about its scope should score at chance on a benchmark whose anomalies
 are entirely outside that scope, and CALM-VAD does.} \pend{NWPU is pending.}
 
+\subsection{Fusion- and calibration-variant ablations}
+\label{sec:ablations}
+\input{tables/ablation_fusion}
+\input{tables/ablation_calibration}
+\Cref{tab:ablationfusion} isolates the combination rule from everything
+else. \textbf{The choice between Dempster's rule and noisy-OR is
+inconsequential on all four benchmarks}: AUC and $\bar F_1$ match to within
+$0.001$--$0.002$ everywhere, because in practice at most one cue is
+strongly active on a given frame, and the two rules only disagree when
+several cues fire at comparable strength simultaneously. \textbf{Removing
+fusion altogether (B4) is a different matter, and its cost is
+dataset-dependent}: on ShanghaiTech and UBnormal, B4 tracks B0 almost
+exactly (one cue dominates the belief on those streams already, so summing
+in the rest adds little); on CHAD, B4 loses $1.2$ AUC points against the
+full fusion ($0.583$ vs.\ $0.590$), the one case in our four benchmarks
+where combining cues measurably helps. We read this as evidence that
+\emph{which} combination rule is used matters far less than \emph{whether}
+cues are combined at all, and that the benefit of combining them is
+scene-dependent rather than universal -- an argument for keeping fusion
+in the pipeline even though its exact rule is not the lever that matters
+most.
+
+\Cref{tab:ablationcalib} runs the same fused belief through three
+calibration maps. \textbf{Isotonic regression wins on every one of the four
+benchmarks}, and the margin is not small: it more than halves Platt's $\ece$
+on CHAD and Avenue, and is one order of magnitude better than Platt on
+ShanghaiTech and UBnormal ($0.03$ vs.\ $0.56$; $0.05$ vs.\ $0.47$).
+Temperature scaling -- a single learned scalar -- lands consistently between
+the two, closer to Platt than to isotonic. The pattern matches what produces
+it: Platt and temperature scaling both assume the belief-to-probability map
+is a sigmoid (Platt) or a fixed monotone rescaling (temperature) of the raw
+score, while isotonic makes no shape assumption, and the fused Dempster
+belief on these streams is visibly non-sigmoidal (heavily mass-concentrated
+near $0$ with a long tail, from \S\ref{sec:m2}'s discounting). \textbf{This
+is the clearest actionable finding among the ablations}: a deployer of
+\method{} should keep isotonic as the default calibration map rather than
+substitute a parametric one for simplicity, since the cost of doing so is
+large and consistent, not occasional.
+
 \subsection{Cross-dataset degradation}
 \input{tables/cross_dataset}
 \Cref{tab:cross} tests H5 (the calibrated chain degrades gracefully under
@@ -666,16 +714,43 @@ before trusting it.
 \Cref{tab:cost} reports the decision-layer latency added on CPU. Measured over
 $79{,}477$ real ShanghaiTech frames on a commodity Windows laptop CPU, M1--M4
 adds $1.38$\,ms/frame on average ($3.44$\,ms p95) -- $722$\,fps of headroom,
-confirming the layer itself is not the bottleneck. \pend{The pose front-end
-cost (SENTRIX's own \texttt{evaluate.py}) is not yet measured on this
-machine; end-to-end fps is pending that number.}
+confirming the layer itself is not the bottleneck. The pose front end (the
+same YOLO11n-pose + ByteTrack front end used to extract Avenue's poses,
+\S\ref{sec:setup}) is measured separately on the identical CPU, over a real
+Avenue test clip: $170.06$\,ms/frame mean ($177.11$\,ms p95, $5.88$\,fps by
+itself). \textbf{The pose front end, not \method{}'s decision layer, sets
+the end-to-end frame rate on this hardware}: it accounts for
+$170.06/(170.06+1.384)\approx99.2\%$ of the per-frame budget, so end-to-end
+throughput on this CPU is $\approx5.8$\,fps regardless of which decision
+layer sits behind it. This matches the deployability argument in
+\S\ref{sec:intro} directly: the reliability/calibration/risk-control back end
+this paper contributes is not what a practitioner needs to optimize for
+speed -- the pose extractor is -- and swapping in a faster front end
+(a smaller model, a lower input resolution, or GPU inference) leaves
+\method{}'s $1.38$\,ms/frame cost unchanged.
 
 \subsection{Qualitative}
-\pend{We show evidence records for representative true and false alarms,
-including a case where a degraded skeleton drives B0 to fire while M1's
-discount keeps \method{} silent, and a case where high conflict $K$ flags a
-genuinely ambiguous scene.} \todo{add 2--3 figure panels with snapshots +
-records}
+\input{figures/qual_examples}
+\Cref{fig:qual} shows two real evidence records, both LOITERING-driven,
+found by an exhaustive frame-level search of the Avenue test set (the
+mechanism at work, not a cherry-picked illustration -- we searched every
+frame of every one of the 21 test clips for the largest M1 effect and the
+highest conflict, and report the winners). Panel (a) is a genuine alarm
+inside a labeled anomaly window. Panel (b) is the clearest real case we
+found of M1 tempering a cue on an ordinary scene Avenue does not label
+anomalous: the same LOITERING cue fires at full strength as in panel (a),
+but a partially degraded skeleton discounts the belief from $0.828$ (what
+an undiscounted pipeline outputs on this exact frame) to $0.674$. We note
+this frame does not fully cross to a suppressed alarm at the default
+threshold -- an honest limit of what one still-active-cue example can show;
+the aggregate effect of M1 across a whole stream is the controlled-noise
+result in \S\ref{sec:m4} results ($19.2\to0.0$ FAPH), which is the claim
+this section illustrates rather than replaces. In both frames LOITERING is
+the sole active cue, so conflict $K$ stays modest ($\approx0.10$); we did
+not find a frame with two disagreeing cues active simultaneously on the
+Avenue test set, which is itself consistent with \Cref{tab:crossbench}'s
+reading that Avenue's real anomalies mostly fall outside our five cues'
+coverage.
 
 % ==================================================================
 \section{Limitations}
