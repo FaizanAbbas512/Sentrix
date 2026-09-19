@@ -137,6 +137,11 @@ def main():
     ap.add_argument("--fps", type=float, default=None, help="override; else read from video")
     ap.add_argument("--stride", type=int, default=1, help="process every Nth frame")
     ap.add_argument("--ext", default="mp4,avi,mov,mkv")
+    ap.add_argument("--resume-dir", default=None,
+                    help="save one small JSON per clip here as it finishes, and "
+                         "skip clips already done -- safe to re-run after a "
+                         "Colab disconnect; large batches (e.g. NWPU-Campus's "
+                         "242 test videos) should always set this")
     args = ap.parse_args()
 
     from ultralytics import YOLO
@@ -153,22 +158,42 @@ def main():
         raise SystemExit(f"no videos with {exts} in {args.videos}")
 
     import cv2
+    if args.resume_dir:
+        os.makedirs(args.resume_dir, exist_ok=True)
+
     clips = []
     fps_seen = []
-    for vp in vids:
+    for i, vp in enumerate(vids):
         stem = os.path.splitext(os.path.basename(vp))[0]
+        part_path = os.path.join(args.resume_dir, stem + ".json") if args.resume_dir else None
+
+        if part_path and os.path.exists(part_path):
+            with open(part_path, "r", encoding="utf-8") as f:
+                clip = json.load(f)
+            clips.append(clip)
+            fps_seen.append(clip.get("_fps", 20.0))
+            print(f"  [{i+1}/{len(vids)}] {stem}  (already done, skipping)")
+            continue
+
         cap = cv2.VideoCapture(vp)
         vfps = args.fps or (cap.get(cv2.CAP_PROP_FPS) or 20.0)
         cap.release()
         fps_seen.append(vfps)
-        print(f"  [{len(clips)+1}/{len(vids)}] {stem}  (fps~{vfps:.1f})")
+        print(f"  [{i+1}/{len(vids)}] {stem}  (fps~{vfps:.1f})")
         n, frames = extract_one(model, vp, classes, args.imgsz, args.conf,
                                 args.iou, args.tracker, args.stride, args.device)
-        clips.append({
+        clip = {
             "name": stem, "n_frames": n, "split": args.split,
-            "gt": _load_gt(args.gt, stem, n), "frames": frames,
-        })
+            "gt": _load_gt(args.gt, stem, n), "frames": frames, "_fps": vfps,
+        }
+        clips.append(clip)
+        if part_path:
+            with open(part_path, "w", encoding="utf-8") as f:
+                json.dump(clip, f)
+            print(f"      -> saved {part_path} (safe to resume from here)")
 
+    for c in clips:
+        c.pop("_fps", None)
     out = {"fps": args.fps or float(np.median(fps_seen)), "clips": clips}
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
