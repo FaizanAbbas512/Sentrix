@@ -64,18 +64,31 @@ in a standard TeX Live / MiKTeX / Overleaf install.
 
 ## What's left before this is submission-ready
 
-1. NWPU-Campus — investigated, not just left pending: its official release
-   ships only raw video (76.6 GB), and we checked the one plausible
-   shortcut (the original authors' own tracking-bundle release) directly —
-   downloaded it, inspected 547 real per-clip pickles, confirmed they are
-   YOLO-style bounding-box tracks (no keypoints), which is not enough for
-   M1 or the FALL/FIGHT cues. **No shortcut exists**; a real result needs
-   a GPU pose-extraction pass over the raw video (a T4 on Colab would do
-   it — the extracted trackings, `data/raw/nwpu/tracking/NCampus/`, are
-   kept locally in case a bbox-only supplementary cue subset is ever
-   wanted, but that would be a materially weaker result than the other
-   four datasets' full 5-cue evaluation, not a like-for-like fifth
-   benchmark). Genuinely the one open gap; `\draftmodetrue` reflects that.
+1. NWPU-Campus — investigated (both plausible shortcuts around a GPU pass
+   checked and ruled out with evidence, see main.tex §V), and the GPU pass
+   itself is now fully prepared: **`colab/calm_vad_nwpu_colab.ipynb`**, a
+   dedicated, resumable, ready-to-run notebook covering the real, complete
+   dataset (all 242 real test clips, not a subset) —
+     - all 106 real archive-volume Drive IDs hardcoded, MD5-verified against
+       the dataset's own checksums, auto-retries a corrupt/partial download
+       (this exact download+verify+retry logic was run for real against
+       volume 1 of the actual dataset while building this: fresh download
+       verified correct, a corrupted copy was correctly detected and
+       re-fetched);
+     - the real ground truth (`NWPU_Campus_gt.npz`, `0=normal/1=anomaly`,
+       confirmed against the dataset's own `read_gt_file.py`) converted via
+       the new `calm/nwpu_gt.py` module (tested against the real file: 242
+       clips, sane real anomaly-interval durations);
+     - pose-extraction is resumable per clip (`extract_poses.py --resume-dir`,
+       new) and saved to the user's Drive as it goes, so a Colab disconnect
+       -- likely, given this is hours of GPU work -- costs at most a
+       re-download of the archive, never already-finished GPU compute;
+     - ends by running the exact same `calm.harness` used for the other
+       four benchmarks and printing the real numbers to paste into the
+       paper.
+   Not run yet (needs the user's own GPU quota) -- this is prepared
+   infrastructure, not a result; `\draftmodetrue` stays true until it's
+   actually run.
 2. ~~Run B3 (published pose-density baseline) and B4 (single strongest cue)~~
    B4 is run on all 4 datasets (Table VII). B3 is a deliberate, explained
    decline, not an oversight: a fair B3 needs cloning and training STG-NF's
