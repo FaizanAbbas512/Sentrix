@@ -36,3 +36,7 @@ paper/*.blg
 paper/*.fls
 paper/*.fdb_latexmk
 paper/*.synctex.gz
+
+# real NWPU-Campus results downloaded from Colab (288MB pose file) -- kept
+# locally as source of truth for the numbers in the paper, too big for git
+nwpu results/

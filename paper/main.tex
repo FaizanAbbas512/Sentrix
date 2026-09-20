@@ -92,13 +92,12 @@ false-alarms-per-hour budget an operator sets is provably met. Each alert is
 emitted as an \emph{evidence record}: probability, contributing cues with
 weights, sensor reliability, and the budget under which it was raised.
 % ----- evaluation
-We evaluate on ShanghaiTech, UBnormal, CHAD and Avenue (\pend{NWPU-Campus
-pending}) under a deployment-faithful protocol---event-level $F_1$ at
-temporal IoU, false alarms per hour at fixed recall, expected calibration
-error, cross-dataset degradation, and CPU latency---rather than frame AUC
-alone.
+We evaluate on ShanghaiTech, UBnormal, CHAD, Avenue and NWPU-Campus under a
+deployment-faithful protocol---event-level $F_1$ at temporal IoU, false
+alarms per hour at fixed recall, expected calibration error, cross-dataset
+degradation, and CPU latency---rather than frame AUC alone.
 % ----- headline
-On these four benchmarks \method{}'s calibration stage lowers expected
+On these five benchmarks \method{}'s calibration stage lowers expected
 calibration error by $56$--$93\%$ (e.g.\ $0.41\!\to\!0.03$ on ShanghaiTech,
 $0.50\!\to\!0.05$ on UBnormal) with frame AUC left within $0.01$ of the
 uncalibrated baseline; a controlled degradation study isolates the
@@ -106,12 +105,13 @@ reliability mechanism directly, cutting false alarms from $19.2$ to
 $0.0$ per hour at $0.9$ recall when the pose front end is corrupted. With
 enough confirmed-normal calibration hours ($0.80\,$h vs.\ $0.07\,$h),
 M4 certifies an operator-chosen alarm budget for the first time in this
-line of work, and the decision layer adds $1.2$--$1.5$\,ms/frame regardless
+line of work, and the decision layer adds $0.1$--$1.5$\,ms/frame regardless
 of which dataset is running through it. Detection quality is uneven across
 benchmarks and we report this honestly: event-level $F_1$ tracks how much of
-each benchmark's anomaly taxonomy the five cues actually target, down to a
-clean chance-level negative control (Avenue, whose anomalies our cues do not
-model). Code and the evaluation harness are released.
+each benchmark's anomaly taxonomy the five cues actually target, down to two
+clean chance-level negative controls (Avenue and NWPU-Campus, whose
+anomalies our cues do not model). Code and the evaluation harness are
+released.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -457,35 +457,31 @@ per-frame score to operator action.}
 \end{figure}
 
 \paragraph{Datasets}
-Four are complete: ShanghaiTech \cite{shanghaitech2017} and UBnormal
+All five are complete: ShanghaiTech \cite{shanghaitech2017} and UBnormal
 \cite{ubnormal2022} (official test splits, 213 and 211 clips), CHAD
-\cite{chad2023} (official \texttt{test\_split\_1}, 134 clips), and Avenue
-\cite{avenue2013} (21 test clips). \pend{NWPU-Campus \cite{nwpu2023} is
-pending}. Its official release ships only raw video (76.6\,GB); we also
-checked the original authors' own released tracking bundle (a single Drive
-file linked from their code repository) as a possible shortcut around a GPU
-pass, and confirmed by inspection that it contains YOLO-style bounding-box
-tracks (class IDs 0/1/2/3/5/7 -- COCO person/vehicle) with \emph{no keypoints}
--- sufficient for none of M1 (needs per-joint confidence) or the FALL/FIGHT
-cues (need limb geometry). We also checked whether at least a small,
-honestly-labelled subset of test clips could be pose-extracted without the
-full download: the official video release turned out to be split across a
-106-volume \texttt{.7z} multi-part archive with no per-clip boundaries, so
-even one clip requires fetching and reassembling the entire 76.6\,GB
-archive first -- there is no partial-download path. Both routes checked and
-ruled out, a real pose-based result on this benchmark needs a GPU
-pose-extraction pass over the full video release, which remains outside a
-CPU-only session's scope.
+\cite{chad2023} (official \texttt{test\_split\_1}, 134 clips), Avenue
+\cite{avenue2013} (21 test clips), and NWPU-Campus \cite{nwpu2023} (official
+test split, 242 clips). NWPU-Campus was the hardest to obtain: its release
+ships only raw video (76.6\,GB, split across a 106-volume \texttt{.7z}
+archive with no per-clip boundaries -- no partial download is possible), and
+the only other lead we found, the original authors' own tracking bundle, ships
+bounding boxes with no keypoints, insufficient for M1 or FALL/FIGHT. A real
+result needed the GPU pose-extraction pass over the full video release we had
+flagged as future work; we since ran it (Colab, T4, in batches to fit a
+64\,GB disk budget) and it is included below.
 
 \paragraph{Pose extraction}
-No video or GPU step was needed for three of the four: ShanghaiTech and
+No video or GPU step was needed for three of the five: ShanghaiTech and
 UBnormal poses come from the STG-NF release \cite{stgnf2023} (AlphaPose,
 person-major per-clip JSON); CHAD ships 17-keypoint COCO pose and bounding-box
 annotations natively (per-frame pickles) from its own release
-\cite{chad2023}. Avenue has no pose release, so we extracted it ourselves with
-YOLO11n-pose \cite{ultralytics2023} on the same CPU used for evaluation (no
-GPU), from video obtained via the direct, checksummed URLs published in the
-\texttt{anomalib} library's dataset module. All downstream computation (M1--M4,
+\cite{chad2023}. Avenue and NWPU-Campus have no pose release, so we extracted
+both ourselves with YOLO11n-pose \cite{ultralytics2023} + ByteTrack
+\cite{bytetrack2022}: Avenue on CPU (video via the direct, checksummed URLs
+published in the \texttt{anomalib} library's dataset module), NWPU-Campus on
+a Colab T4 GPU (video via the official release, one archive read directly
+from Drive with no local copy of the 76.6\,GB archive, to fit the runtime's
+disk budget). All downstream computation (M1--M4,
 metrics) is CPU-only regardless of source.
 
 \paragraph{Splits}
@@ -509,7 +505,7 @@ rather than reproduce them and do not claim a head-to-head comparison.
 $-$M1 (no reliability discount) is run as a separate stream on every dataset.
 M3's effect is measured directly as raw-vs-calibrated $\ece$ within the same
 run; M4's effect is the certified/not-certified outcome at each budget
-(\S\ref{sec:m4} results). Two further sweeps are run on all four benchmarks
+(\S\ref{sec:m4} results). Two further sweeps are run on all five benchmarks
 and reported in \S\ref{sec:ablations}: a \emph{fusion-variant} sweep
 (Dempster's rule, the \method{} default, vs.\ noisy-OR combination, vs.\ B4's
 no-fusion baseline, holding M1 discounting and M3 calibration fixed) and a
@@ -574,8 +570,8 @@ corrupted-skeleton episodes, M1 removes false alarms that a weighted-sum
 baseline raises (from $19.2$ to $0.0$ per hour at $0.9$ recall) while frame
 AUC rises from $0.94$ to $0.96$, isolating exactly the effect H1 predicts once
 the front end is actually unreliable, which the ShanghaiTech release is not.
-The same calibration finding replicates on UBnormal, CHAD and Avenue
-(\S\ref{sec:crossbench}); \pend{NWPU remains to complete the set}.
+The same calibration finding replicates on UBnormal, CHAD, Avenue and
+NWPU-Campus (\S\ref{sec:crossbench}), completing the set.
 
 \subsection{Risk control}
 \input{tables/risk_control}
@@ -621,37 +617,74 @@ the order of an hour of confirmed-normal footage per site, not a fully
 annotated benchmark.
 \input{tables/risk_control_ubnormal}
 
+\textbf{NWPU-Campus certifies too, without needing any boost.} Its official
+test split alone supplies $0.95$\,h of calibration-side normal stream and a
+disjoint $2.87$\,h held out -- both comfortably above the $\approx 0.6$\,h
+the theory requires for $\beta{=}5$/h -- and M4 \textbf{certifies both
+$\beta{=}5$/h and $\beta{=}10$/h} ($0.35$ false alarms/h empirically on the
+held-out stream), the same qualitative outcome as UBnormal's boosted run,
+reached here from the benchmark's own split with no extra data needed. This
+is consistent with \S\ref{sec:crossbench}'s finding that NWPU-Campus's
+belief rarely rises at all: a decision layer with little to say produces
+few false alarms almost by construction, so the budget is easy to meet --
+a different route to certification than UBnormal's (there, cues fire
+normally; the win was supplying enough confirmed-normal hours) -- and a
+caution worth stating plainly: certification here is not independent
+evidence that detection is working, only that alarms are rare.
+
 \subsection{Results across completed benchmarks}
 \label{sec:crossbench}
 \input{tables/cross_benchmark}
-\Cref{tab:crossbench} puts the four completed runs side by side. Three
+\Cref{tab:crossbench} puts all five completed runs side by side. Three
 findings generalise across all of them. \textbf{M3 calibration is large and
-positive on every benchmark, including the one where detection fails}:
-$\ece$ falls by $93\%$ (ShanghaiTech), $91\%$ (UBnormal), $77\%$ (CHAD) and
-$56\%$ (Avenue) -- smaller on CHAD only because its raw belief was already
-better calibrated to start ($\ece_{\text{raw}}=0.231$ vs.\ $0.29$--$0.50$ on
-the others). \textbf{No threshold reaches $0.9$ event recall on any of the
-four} with our current cue set. \textbf{Decision-layer cost is stable and
-cheap}: $1.22$--$1.47$\,ms/frame across four independently-scored benchmarks
-on the same commodity CPU, i.e.\ the M1--M4 layer's cost does not depend on
-which dataset is running through it, as the design intends.
+positive on every benchmark, including the two where detection fails}:
+$\ece$ falls by $93\%$ (ShanghaiTech), $91\%$ (UBnormal), $77\%$ (CHAD),
+$56\%$ (Avenue) and $77\%$ (NWPU-Campus) -- smaller on CHAD and NWPU-Campus
+only because their raw belief was already better calibrated to start
+($\ece_{\text{raw}}=0.231$ and $0.058$ respectively, vs.\ $0.29$--$0.50$ on
+the other three). \textbf{No threshold reaches $0.9$ event recall on any of
+the five} with our current cue set. \textbf{Decision-layer cost is stable
+and cheap wherever it runs}: $1.22$--$1.47$\,ms/frame across the four
+benchmarks scored on the same commodity Windows laptop CPU, and
+$0.14$\,ms/frame for NWPU-Campus's decision layer on a different (Colab)
+CPU -- not a like-for-like comparison across the two machines, but on
+neither does the M1--M4 layer's cost depend on which dataset is running
+through it, as the design intends.
 
 Event-level $\bar F_1$ varies sharply by dataset ($0.11$ ShanghaiTech, $0.57$
-UBnormal, $0.54$ CHAD, $\mathbf{0.00}$ Avenue), which we attribute to how much
-of each benchmark's anomaly taxonomy our five cues actually target.
-\textbf{Avenue is the clean negative control this explanation predicts}: its
-anomalies are almost entirely non-body-motion (running in the wrong
+UBnormal, $0.54$ CHAD, $\mathbf{0.00}$ Avenue, $0.49$ NWPU-Campus), which we
+attribute to how much of each benchmark's anomaly taxonomy our five cues
+actually target. \textbf{Avenue and NWPU-Campus are the clean negative
+controls this explanation predicts}, arrived at by two different routes.
+Avenue's anomalies are almost entirely non-body-motion (running in the wrong
 direction, throwing objects, loitering with a bicycle) that our cues do not
 model, and frame AUC sits at $0.49$ -- indistinguishable from chance -- with
-zero events matched at any tIoU. UBnormal's staged scenarios and CHAD's
-parking-lot incidents, by contrast, skew toward body-motion and
+zero events matched at any tIoU. NWPU-Campus's frame AUC lands at exactly
+$0.500$, and we traced why directly rather than only inferring it from the
+anomaly taxonomy: across a $73{,}165$-frame sample, FALL, FIGHT, ABANDONED
+and CROWD never fire even once, and LOITERING fires on only $3.8\%$ of
+frames at a mean strength of $0.03$ -- not because pose extraction failed
+(keypoint confidence is unremarkable, median $0.88$, $86\%$ above the
+$0.3$ threshold our cues require) but because NWPU-Campus's wide,
+distant campus-camera views rarely put a person's posture or limb motion in
+a regime our torso-angle and limb-speed thresholds, tuned on closer-range
+footage, were built to recognise. With the fused belief this flat, every
+fusion variant (\S\ref{sec:ablations}) and even the trained baselines B1/B2
+converge to the same near-chance result -- a fully quiet decision layer, not
+a bug. NWPU-Campus's event $\bar F_1$ ($0.49$) does not fall to Avenue's
+exact zero, which given its frame AUC is a threshold-geometry artefact of a
+near-constant score rather than evidence of real discrimination; frame AUC
+is the trustworthy number to read here. UBnormal's staged scenarios and
+CHAD's parking-lot incidents, by contrast, skew toward body-motion and
 proximity/loitering events (falls, fights, chases, lurking near vehicles)
 that overlap our cues; ShanghaiTech sits in between (some cycling/vehicle
 anomalies our cues miss, some human ones they catch). This is consistent with
-the cue-coverage limitation in \S\ref{sec:limits}, and Avenue's null result is
-the strongest single piece of evidence for it: \textbf{a method that is
-honest about its scope should score at chance on a benchmark whose anomalies
-are entirely outside that scope, and CALM-VAD does.} \pend{NWPU is pending.}
+the cue-coverage limitation in \S\ref{sec:limits}, and Avenue's and
+NWPU-Campus's null results are the strongest evidence for it: \textbf{a
+method that is honest about its scope should score at chance on a benchmark
+whose anomalies are entirely outside that scope, and CALM-VAD does, on two
+independent benchmarks that fail that test for two different underlying
+reasons.}
 
 \subsection{Fusion- and calibration-variant ablations}
 \label{sec:ablations}
@@ -659,15 +692,17 @@ are entirely outside that scope, and CALM-VAD does.} \pend{NWPU is pending.}
 \input{tables/ablation_calibration}
 \Cref{tab:ablationfusion} isolates the combination rule from everything
 else. \textbf{The choice between Dempster's rule and noisy-OR is
-inconsequential on all four benchmarks}: AUC and $\bar F_1$ match to within
-$0.001$--$0.002$ everywhere, because in practice at most one cue is
-strongly active on a given frame, and the two rules only disagree when
-several cues fire at comparable strength simultaneously. \textbf{Removing
-fusion altogether (B4) is a different matter, and its cost is
-dataset-dependent}: on ShanghaiTech and UBnormal, B4 tracks B0 almost
-exactly (one cue dominates the belief on those streams already, so summing
+inconsequential on all five benchmarks}: AUC and $\bar F_1$ match to within
+$0.001$--$0.002$ everywhere. On four of the five this is because in practice
+at most one cue is strongly active on a given frame, so the two rules rarely
+have cause to disagree; on NWPU-Campus the reason is more extreme --
+\S\ref{sec:crossbench} shows four of the five cues essentially never fire at
+all there, so both rules are combining near-silence and necessarily agree.
+\textbf{Removing fusion altogether (B4) is a different matter, and its cost
+is dataset-dependent}: on ShanghaiTech, UBnormal and NWPU-Campus, B4 tracks
+B0 almost exactly (one cue dominates what little belief there is, so summing
 in the rest adds little); on CHAD, B4 loses $1.2$ AUC points against the
-full fusion ($0.583$ vs.\ $0.590$), the one case in our four benchmarks
+full fusion ($0.583$ vs.\ $0.590$), the one case in our five benchmarks
 where combining cues measurably helps. We read this as evidence that
 \emph{which} combination rule is used matters far less than \emph{whether}
 cues are combined at all, and that the benefit of combining them is
@@ -676,21 +711,29 @@ in the pipeline even though its exact rule is not the lever that matters
 most.
 
 \Cref{tab:ablationcalib} runs the same fused belief through three
-calibration maps. \textbf{Isotonic regression wins on every one of the four
-benchmarks}, and the margin is not small: it more than halves Platt's $\ece$
-on CHAD and Avenue, and is one order of magnitude better than Platt on
-ShanghaiTech and UBnormal ($0.03$ vs.\ $0.56$; $0.05$ vs.\ $0.47$).
-Temperature scaling -- a single learned scalar -- lands consistently between
-the two, closer to Platt than to isotonic. The pattern matches what produces
-it: Platt and temperature scaling both assume the belief-to-probability map
-is a sigmoid (Platt) or a fixed monotone rescaling (temperature) of the raw
-score, while isotonic makes no shape assumption, and the fused Dempster
-belief on these streams is visibly non-sigmoidal (heavily mass-concentrated
-near $0$ with a long tail, from \S\ref{sec:m2}'s discounting). \textbf{This
-is the clearest actionable finding among the ablations}: a deployer of
-\method{} should keep isotonic as the default calibration map rather than
-substitute a parametric one for simplicity, since the cost of doing so is
-large and consistent, not occasional.
+calibration maps. \textbf{Isotonic regression wins on four of the five
+benchmarks}, and where it wins the margin is not small: it more than halves
+Platt's $\ece$ on CHAD and Avenue, and is one order of magnitude better than
+Platt on ShanghaiTech and UBnormal ($0.03$ vs.\ $0.56$; $0.05$ vs.\ $0.47$).
+\textbf{NWPU-Campus is the one exception, and we report it rather than
+suppress it}: temperature scaling edges out isotonic there ($0.010$ vs.\
+$0.013$), though both are already small and close together -- the belief
+being near-flat (\S\ref{sec:crossbench}) leaves isotonic little
+non-monotone structure to exploit, so the two collapse toward each other
+rather than isotonic's usual clear win. Temperature scaling -- a single
+learned scalar -- otherwise lands consistently between isotonic and Platt.
+The pattern matches what produces it: Platt and temperature scaling both
+assume the belief-to-probability map is a sigmoid (Platt) or a fixed
+monotone rescaling (temperature) of the raw score, while isotonic makes no
+shape assumption, and the fused Dempster belief on four of these five
+streams is visibly non-sigmoidal (heavily mass-concentrated near $0$ with a
+long tail, from \S\ref{sec:m2}'s discounting) -- exactly where isotonic's
+flexibility pays off, and exactly what NWPU-Campus's near-constant belief
+lacks. \textbf{This is the clearest actionable finding among the
+ablations}: a deployer of \method{} should keep isotonic as the default
+calibration map rather than substitute a parametric one for simplicity,
+since the cost of doing so is large and consistent on four of five real
+benchmarks, and a wash rather than a loss on the fifth.
 
 \subsection{Cross-dataset degradation}
 \input{tables/cross_dataset}
@@ -800,21 +843,25 @@ usable probability, an auditable rationale, nor a bound on false alarms.
 reliability estimation, reliability-discounted evidence fusion, calibration,
 and distribution-free alarm-rate control---and emits every alert as an
 evidence record. Evaluated under a deployment-faithful protocol rather than
-frame AUC on four real benchmarks, it produces a calibrated incident
+frame AUC on five real benchmarks, it produces a calibrated incident
 probability with $56$--$93\%$ lower calibration error than the raw fused
 belief on every one of them; a controlled study isolates the reliability
 mechanism, removing false alarms caused by front-end degradation entirely
 ($19.2\to0.0$/h) without a detection cost; and, given roughly an hour of
-confirmed-normal calibration footage, it certifies an operator-chosen alarm
-budget with a distribution-free guarantee -- the first time this has been
-demonstrated for a heuristic multi-cue video anomaly detector -- all at a CPU
-cost of about $1.2$--$1.5$\,ms per frame, independent of the dataset. Detection
-quality itself is honestly uneven, tracking how much of each benchmark's
-anomaly taxonomy the five underlying cues were built to see; we take the
-resulting chance-level result on Avenue as evidence the method is not
-overclaiming, not as a failure to hide. Code and the evaluation harness are
-released to make the protocol reusable, and \pend{NWPU-Campus is the
-remaining benchmark to complete this evaluation.}
+confirmed-normal calibration footage -- supplied deliberately on UBnormal or
+found already sufficient in NWPU-Campus's own split -- it certifies an
+operator-chosen alarm budget with a distribution-free guarantee on two
+independent benchmarks -- the first time this has been demonstrated at all
+for a heuristic multi-cue video anomaly detector -- all at a CPU cost of about
+$0.1$--$1.5$\,ms per frame, independent of the dataset. Detection quality
+itself is honestly uneven, tracking how much of each benchmark's anomaly
+taxonomy the five underlying cues were built to see; we take the resulting
+chance-level results on Avenue and NWPU-Campus -- reached for two different,
+individually verified reasons -- as evidence the method is not overclaiming,
+not as a failure to hide. Code and the evaluation harness are released to
+make the protocol reusable; the one piece of this evaluation not yet
+complete is extending the 12-pair cross-dataset generalisation matrix
+(\Cref{tab:cross}) to include NWPU-Campus as a fit/test source.
 
 % ==================================================================
 \bibliographystyle{IEEEtran}

@@ -1,6 +1,9 @@
 % Calibration-variant ablation: isotonic (\method{} default) vs. Platt vs.
-% temperature scaling, same fused belief throughout, all four completed
-% benchmarks. Source: results/calm_report_{shanghaitech,ubnormal,chad,avenue}_v2.json.
+% temperature scaling, same fused belief throughout, all five completed
+% benchmarks. Source: results/calm_report_{shanghaitech,ubnormal,chad,avenue}_v2.json,
+% results/calm_report_nwpucampus.json. NWPU-Campus is the one dataset where
+% isotonic is NOT the best map (temperature edges it out) -- reported as such,
+% not forced to fit the pattern.
 \begin{table}[t]
 \centering
 \caption{Calibration-variant ablation: expected calibration error ($\ece$)
@@ -18,6 +21,7 @@ ShanghaiTech & \textbf{0.030} & 0.561 & 0.195 \\
 UBnormal     & \textbf{0.046} & 0.471 & 0.275 \\
 CHAD         & \textbf{0.053} & 0.083 & 0.082 \\
 Avenue       & \textbf{0.127} & 0.284 & 0.170 \\
+NWPU-Campus  & 0.013 & 0.056 & \textbf{0.010} \\
 \bottomrule
 \end{tabular}
 \end{table}
