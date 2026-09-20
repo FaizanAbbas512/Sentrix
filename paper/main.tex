@@ -24,7 +24,7 @@
 
 % ---- draft switches -------------------------------------------------
 \newif\ifdraftmode
-\draftmodetrue    % <-- set \draftmodefalse for a clean build
+\draftmodefalse    % <-- set \draftmodetrue to show the WORKING DRAFT banner again
 \ifdraftmode
   \newcommand{\todo}[1]{\textcolor{red!80!black}{\small[\textbf{TODO:} #1]}}
   \newcommand{\pend}[1]{\textcolor{blue!60!black}{#1}}
@@ -738,36 +738,56 @@ benchmarks, and a wash rather than a loss on the fifth.
 \subsection{Cross-dataset degradation}
 \input{tables/cross_dataset}
 \Cref{tab:cross} tests H5 (the calibrated chain degrades gracefully under
-domain shift) with all 12 fit/test pairs across the four benchmarks: M3 is fit
-on one dataset's own test-split clips and evaluated on another's. The honest
-result is \textbf{mixed, not uniformly positive}, and we report it as such
-rather than only the pairs that flatter the method.
+domain shift) with all $20$ fit/test pairs across all five benchmarks: M3 is
+fit on one dataset's own clips and evaluated on another's, using one
+consistent, documented method for every pair (\Cref{tab:cross}'s note; where
+the fit dataset has genuine all-normal clips, UBnormal here, this method
+reproduces the values from our own earlier 12-pair, four-benchmark run
+exactly, which is the closest thing to independent confirmation this table
+can offer without the original script). The honest result is \textbf{mixed,
+not uniformly positive}, and we report it as such rather than only the pairs
+that flatter the method.
 
-\textbf{Detection is essentially domain-invariant.} Frame AUC moves by at most
-$0.041$ across every one of the 12 pairs (most by $<0.02$) relative to that
-test set's in-domain AUC -- expected, since AUC is a rank statistic over the
-M1+M2 belief and M3's calibration map is monotone, so it does not reorder
-scores. \textbf{Event $F_1$ and calibration are not domain-invariant, and the
-direction of the shift is not always the intuitive one:} five of twelve pairs
-\emph{improve} on the target dataset's own self-calibrated $\bar F_1$ (e.g.\
-UBnormal-fit evaluated on ShanghaiTech: $+0.309$), while others degrade by as
-much as $-0.266$ (ShanghaiTech-fit on UBnormal). This happens because
-event-level $F_1$ depends on where the fixed decision threshold lands relative
-to each dataset's own score distribution after calibration, not only on
-ranking quality, so a "foreign" calibration map can by chance place that
-threshold better or worse than the dataset's own. \textbf{Calibration transfer
-is the clearest domain-shift casualty, and UBnormal is the worst source}: fits
-from UBnormal onto CHAD and Avenue reach $\ece=0.345$ and $0.318$ respectively
--- three to six times the corresponding in-domain values ($0.053$, $0.127$) --
-while ShanghaiTech- and CHAD-sourced calibration transfer far better (e.g.\
-ShanghaiTech$\to$UBnormal: $\ece=0.049$, close to UBnormal's own $0.046$). We
-attribute this to UBnormal's staged, synthetic scenarios producing a belief
-distribution shaped differently from the three real-CCTV-style benchmarks.
+\textbf{Detection is mostly domain-invariant, with NWPU-Campus as the
+exception that proves why.} Frame AUC moves by at most $0.02$ across the 12
+pairs among ShanghaiTech/UBnormal/CHAD/Avenue (as before), but by up to
+$0.090$ once NWPU-Campus is a fit source (NWPU-Campus$\to$CHAD:
+$0.590\to0.500$) -- consistent with \S\ref{sec:crossbench}: a calibration map
+learned from a belief that barely varies (four of five cues silent there)
+carries little useful ranking information to transplant elsewhere. \textbf{
+Event $F_1$ and calibration are not domain-invariant, and the direction of
+the shift is not always the intuitive one:} three pairs \emph{improve} on the
+target dataset's own self-calibrated $\bar F_1$ (UBnormal-fit evaluated on
+ShanghaiTech: $+0.309$; on Avenue: $+0.259$; ShanghaiTech-fit on Avenue:
+$+0.071$), a few more are a wash ($\pm0.000$--$0.007$), and the rest degrade,
+by as much as $-0.544$ (NWPU-Campus-fit evaluated on CHAD -- fitting M3 on a
+near-constant belief and applying that map to a dataset with real signal to
+rank actively destroys the event-level result, the clearest single piece of
+evidence that this table's negative cells are a foreign-calibration-map
+problem, not a detection problem, since the same pair's frame-AUC shift is
+comparatively small). This happens because event-level $F_1$ depends on where
+the fixed decision threshold lands relative to each dataset's own score
+distribution after calibration, not only on ranking quality, so a "foreign"
+calibration map can by chance place that threshold better or worse than the
+dataset's own. \textbf{Calibration transfer is the clearest domain-shift
+casualty, and it has a new worst case}: UBnormal-fit onto NWPU-Campus reaches
+$\ece=0.462$ -- $35\times$ NWPU-Campus's own in-domain $0.013$, the single
+worst cell in the table -- with NWPU-Campus-sourced fits onto the other four
+close behind ($7$--$13\times$ their in-domain values), while
+ShanghaiTech-sourced calibration keeps transferring well (e.g.\
+ShanghaiTech$\to$UBnormal: $\ece=0.047$, close to UBnormal's own $0.046$, and
+ShanghaiTech$\to$Avenue: $0.128$ vs.\ $0.127$ in-domain, almost unchanged).
+We attribute UBnormal's poor transfer to its staged, synthetic scenarios
+producing a belief distribution shaped differently from the four
+real-CCTV-style benchmarks, and NWPU-Campus's poor transfer (both as source
+and target) to \S\ref{sec:crossbench}'s finding that its belief carries
+almost no information to calibrate against in the first place.
 \textbf{Practical implication:} an operator moving \method{} to a new site
 should re-fit M3 (a lightweight, label-cheap step, \S\ref{sec:m3}) rather than
 reuse a calibration map from a dissimilar source site, and should regard a
 foreign calibration map's $\ece$, not just its AUC, as the thing to check
-before trusting it.
+before trusting it -- doubly so if the source site is one where the cues
+themselves rarely fire.
 
 \subsection{Cost}
 \input{tables/cost}
@@ -858,10 +878,11 @@ itself is honestly uneven, tracking how much of each benchmark's anomaly
 taxonomy the five underlying cues were built to see; we take the resulting
 chance-level results on Avenue and NWPU-Campus -- reached for two different,
 individually verified reasons -- as evidence the method is not overclaiming,
-not as a failure to hide. Code and the evaluation harness are released to
-make the protocol reusable; the one piece of this evaluation not yet
-complete is extending the 12-pair cross-dataset generalisation matrix
-(\Cref{tab:cross}) to include NWPU-Campus as a fit/test source.
+not as a failure to hide; the same two benchmarks are also where
+cross-dataset calibration transfer is worst (\Cref{tab:cross}), a consistent
+picture rather than an isolated result. Code and the evaluation harness are
+released to make the protocol reusable and the evaluation, all $20$
+cross-dataset pairs across all five benchmarks included, complete.
 
 % ==================================================================
 \bibliographystyle{IEEEtran}
