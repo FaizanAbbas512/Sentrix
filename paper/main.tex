@@ -679,7 +679,14 @@ $56\%$ (Avenue) and $77\%$ (NWPU-Campus) -- smaller on CHAD and NWPU-Campus
 only because their raw belief was already better calibrated to start
 ($\ece_{\text{raw}}=0.231$ and $0.058$ respectively, vs.\ $0.29$--$0.50$ on
 the other three). \textbf{No threshold reaches $0.9$ event recall on any of
-the five} with our current cue set. \textbf{Decision-layer cost is stable
+the five} with our current cue set, and this is a real ceiling, not a
+threshold-search artifact: sweeping all the way to the most permissive
+threshold possible (every frame alarmed) still only recovers $16.7\%$
+(Avenue), $45.1\%$ (NWPU-Campus), $48.3\%$ (ShanghaiTech), $68.8\%$ (CHAD)
+and $80.2\%$ (UBnormal) of ground-truth events -- the rest never have any
+cue fire during their entire duration, at any frame, so no
+threshold can catch them (verified with \texttt{calm/recall\_ceiling\_check.py}).
+\textbf{Decision-layer cost is stable
 and cheap wherever it runs}: $1.22$--$1.98$\,ms/frame across the four
 benchmarks scored on the same commodity Windows laptop CPU, and
 $0.14$\,ms/frame for NWPU-Campus's decision layer on a different (Colab)
@@ -924,7 +931,15 @@ let the synthetic result stand in for a real-data one it has not yet earned.
 (\Cref{tab:crossbench}); the highest-recall FAPH cells are reported as
 \emph{--} rather than filled in, so the false-alarms-per-hour claim in this
 paper is demonstrated at the recall levels our sweep actually reaches, not
-at the higher-recall operating point a deployment would likely prefer.
+at the higher-recall operating point a deployment would likely prefer. We
+checked whether this is an artifact of the threshold grid rather than the
+data: sweeping down to the most permissive threshold possible (every frame
+alarmed, not just our usual grid's floor of $\tau{=}0.02$) still only
+recovers $16.7\%$ (Avenue), $45.1\%$ (NWPU-Campus), $48.3\%$
+(ShanghaiTech), $68.8\%$ (CHAD) and $80.2\%$ (UBnormal) of ground-truth
+events -- a real ceiling set by how many labelled anomalies our five cues
+ever engage with at all, not a search-range limitation
+(\texttt{calm/recall\_ceiling\_check.py}).
 \emph{CALM-VAD's own detection accuracy does not exceed B0 by a meaningful
 margin on any of the five benchmarks} (frame AUC delta $-0.005$ to $+0.003$,
 \Cref{tab:crossbench} and per-dataset reports): the calibration and
