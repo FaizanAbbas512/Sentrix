@@ -1,11 +1,12 @@
 % Populated from results/calm_report_shanghaitech.json (real STG-NF ShanghaiTech
-% test split: 213 clips, 79,477 frames, 384 gt events). FAPH cells are "--"
-% because no threshold in the sweep reached the target recall on this stream
-% (see Sec. Results discussion) -- reported honestly rather than omitted.
+% test split, deduplicated pose file: 107 clips, 39,895 frames, 194 gt events).
+% FAPH cells are "--" because no threshold in the sweep reached the target
+% recall on this stream (see Sec. Results discussion) -- reported honestly
+% rather than omitted.
 \begin{table}[t]
 \centering
 \caption{Detection and alarm load, mean over test clips (ShanghaiTech, STG-NF
-release, $n{=}141$ test clips). FAPH = false alarms per hour of normal stream
+release, $n{=}72$ test clips). FAPH = false alarms per hour of normal stream
 at the stated event recall. Lower FAPH and higher $\bar F_1$ are better.}
 \label{tab:main}
 \setlength{\tabcolsep}{4pt}
@@ -17,12 +18,12 @@ Method & frame AUC & $\bar F_1$ & \multicolumn{3}{c}{FAPH @ recall} \\
 \cmidrule(l){4-6}
  & & & $0.7$ & $0.8$ & $0.9$ \\
 \midrule
-B0 weighted sum (base)      & 0.558 & 0.123 & -- & -- & -- \\
-B1 logistic                 & 0.543 & 0.109 & -- & -- & -- \\
-B2 gradient-boosted         & 0.494 & 0.099 & -- & -- & -- \\
+B0 weighted sum (base)      & 0.557 & 0.070 & -- & -- & -- \\
+B1 logistic                 & 0.542 & 0.109 & -- & -- & -- \\
+B2 gradient-boosted         & 0.493 & 0.097 & -- & -- & -- \\
 \midrule
-CALM-VAD $-$M1              & 0.558 & 0.123 & -- & -- & -- \\
-\textbf{CALM-VAD (full)}   & 0.554 & 0.113 & -- & -- & -- \\
+CALM-VAD $-$M1              & 0.557 & 0.122 & -- & -- & -- \\
+\textbf{CALM-VAD (full)}   & 0.552 & 0.113 & -- & -- & -- \\
 \bottomrule
 \end{tabular}
 \end{table}

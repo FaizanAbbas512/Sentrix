@@ -1,12 +1,12 @@
 % Decision-layer cost from results/calm_report_shanghaitech.json -> "cost"
-% (213 clips, 79,477 frames, this machine). Front-end cost is measured
-% separately: YOLO11n-pose + ByteTrack (calm/extract_poses.py defaults,
-% imgsz=640) timed on the same CPU over Avenue test clip 21 (75 scored
-% frames after a discarded warm-up frame).
+% (107 clips, 39,895 frames -- deduplicated pose file, this machine).
+% Front-end cost is measured separately: YOLO11n-pose + ByteTrack
+% (calm/extract_poses.py defaults, imgsz=640) timed on the same CPU over
+% Avenue test clip 21 (75 scored frames after a discarded warm-up frame).
 \begin{table}[t]
 \centering
 \caption{Latency on a commodity Windows laptop CPU (AMD64, Python 3.12).
-Decision layer = M1--M4, measured over 79{,}477 real ShanghaiTech frames.
+Decision layer = M1--M4, measured over 39{,}895 real ShanghaiTech frames.
 Front end (pose + tracking) is YOLO11n-pose + ByteTrack, timed on the same
 CPU over a real Avenue test clip.}
 \label{tab:cost}
@@ -18,13 +18,13 @@ CPU over a real Avenue test clip.}
 Component & ms/frame (mean) & ms/frame (p95) \\
 \midrule
 Pose + tracking front end   & 170.06 & 177.11 \\
-\textbf{M1--M4 decision layer} & \textbf{1.384} & \textbf{3.435} \\
+\textbf{M1--M4 decision layer} & \textbf{1.981} & \textbf{5.195} \\
 \bottomrule
 \end{tabular}
 \\[2pt]
-\raggedright\footnotesize Decision-layer headroom: 722\,fps (i.e.\ 1.38\,ms/frame)
+\raggedright\footnotesize Decision-layer headroom: 504.7\,fps (i.e.\ 1.98\,ms/frame)
 on this machine; end-to-end throughput is $\approx5.8$\,fps, set almost
 entirely by the pose front end (170\,ms/frame), not by \method{}'s
-decision layer (99.2\% of the end-to-end frame budget is the front end
+decision layer (98.8\% of the end-to-end frame budget is the front end
 on this CPU).
 \end{table}

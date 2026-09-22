@@ -1,6 +1,9 @@
 % Fusion-variant (Dempster vs. noisy-OR) and B4 (single strongest cue, no
 % fusion) ablation, all five completed benchmarks. Source:
-% results/calm_report_{shanghaitech,ubnormal,chad,avenue}_v2.json,
+% results/calm_report_shanghaitech.json (regenerated on the deduplicated
+% pose file; this run's harness already includes the noisy-OR/B4 streams,
+% superseding the old calm_report_shanghaitech_v2.json), and
+% results/calm_report_{ubnormal,chad,avenue}_v2.json,
 % results/calm_report_nwpucampus.json.
 \begin{table}[t]
 \centering
@@ -17,7 +20,7 @@ M1 discounting and M3 calibration throughout.}
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
 Dataset & AUC & $\bar F_1$ & AUC & $\bar F_1$ & AUC & $\bar F_1$ \\
 \midrule
-ShanghaiTech & 0.554 & 0.113 & 0.554 & 0.113 & 0.558 & 0.123 \\
+ShanghaiTech & 0.552 & 0.113 & 0.552 & 0.113 & 0.556 & 0.122 \\
 UBnormal     & 0.538 & 0.570 & 0.538 & 0.570 & 0.537 & 0.570 \\
 CHAD         & 0.590 & 0.544 & 0.589 & 0.544 & 0.583 & 0.544 \\
 Avenue       & 0.491 & 0.000 & 0.491 & 0.000 & 0.489 & 0.000 \\

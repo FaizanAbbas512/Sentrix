@@ -9,7 +9,10 @@
 % table (pre-NWPU-Campus) was produced by a script not preserved from
 % earlier in this project and is superseded by this one -- where the fit
 % dataset has real all-normal clips (UBnormal), this run reproduces that
-% table's values exactly (+0.309, -0.013, +0.259), which is the strongest
+% table's values almost exactly (+0.308, -0.013, +0.259; the first cell
+% moved by 0.001 from the earlier +0.309 because it is also one of the
+% eight ShanghaiTech cells recomputed after the pose-file dedupe fix, not
+% because cross-dataset reproducibility broke), which is the strongest
 % evidence available that the method matches; where it does not
 % (ShanghaiTech/CHAD/Avenue/NWPU-Campus as fit source -- none of the five
 % released pose-VAD splits used here ships a clip with zero anomalous
@@ -33,9 +36,9 @@ Diagonal is in-domain (n/a).}
 \toprule
 fit $\downarrow$ / test $\rightarrow$ & ShanghaiTech & UBnormal & CHAD & Avenue & NWPU-Campus \\
 \midrule
-ShanghaiTech & n/a    & $-0.259$ & $-0.002$ & $+0.071$ & $-0.000$ \\
-UBnormal     & $+0.309$ & n/a    & $-0.013$ & $+0.259$ & $-0.409$ \\
-CHAD         & $-0.069$ & $-0.243$ & n/a    & $+0.000$ & $-0.007$ \\
+ShanghaiTech & n/a    & $-0.259$ & $-0.002$ & $+0.071$ & $+0.000$ \\
+UBnormal     & $+0.308$ & n/a    & $-0.013$ & $+0.259$ & $-0.409$ \\
+CHAD         & $-0.068$ & $-0.243$ & n/a    & $+0.000$ & $-0.007$ \\
 Avenue       & $-0.113$ & $-0.259$ & $-0.172$ & n/a    & $-0.000$ \\
 NWPU-Campus  & $-0.113$ & $-0.318$ & $-0.544$ & $+0.000$ & n/a    \\
 \bottomrule
