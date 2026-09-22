@@ -73,6 +73,36 @@ class Pipeline:
             self.rel = ReliabilityEstimator(cfg)
             self._evidence_log = os.path.join(
                 os.path.dirname(cfg["alerts"]["log_file"]), "evidence.jsonl")
+
+            # ---- M4 auto-calibration: site collects its own "normal" stream
+            # and self-calibrates the alarm budget, no manual harness run
+            # needed. M3 (probability calibration) needs real incident labels
+            # and is intentionally NOT auto-fit here -- see config.yaml note.
+            cc = cfg.get("calm", {})
+            self.calm_auto = bool(cc.get("auto_calibrate", True))
+            self.calm_warmup_hours = float(cc.get("warmup_hours", 1.0))
+            self.calm_recal_hours = float(cc.get("recalibrate_every_hours", 24.0))
+            self._calm_collect_hours = self.calm_warmup_hours
+            self._calm_collecting = self.calm_auto
+            self._calm_buf = []
+            self._calm_buf_start = time.time()
+
+            # ---- restore a previously auto-calibrated tau, if any, so a
+            # restart (crash, power cut, redeploy) doesn't silently fall
+            # back to the permissive default tau for another warm-up cycle ----
+            self._calm_state_file = os.path.join(
+                os.path.dirname(cfg["alerts"]["log_file"]), "calm_state.json")
+            try:
+                with open(self._calm_state_file, "r", encoding="utf-8") as f:
+                    saved = json.load(f)
+                self.calm.load_state(saved)
+                if self.calm.summary()["budgeted"]:
+                    print(f"[calm] restored auto-calibrated tau={self.calm.tau:.3f} "
+                          f"from a previous run ({self._calm_state_file})")
+                    if self.calm_recal_hours <= 0:
+                        self._calm_collecting = False  # calibrated once, done for good
+            except (OSError, json.JSONDecodeError, ValueError):
+                pass  # no saved state yet -- normal on first-ever run
         elif cfg.get("calm", {}).get("enabled") and not _CALM_AVAILABLE:
             print("[pipeline] calm.enabled set but the calm package failed to import")
 
@@ -116,7 +146,7 @@ class Pipeline:
         # ---- CALM-VAD: reliability-discounted, calibrated, budgeted decision ----
         if self.calm_on:
             self._calm_step(detections, fall_ids, fight_ids, loiter_ids,
-                            abandon_ids, people, is_crowd, frame, now)
+                            abandon_ids, people, is_crowd, frame, now, level)
 
         for tid in fall_ids:
             self.alerts.fire("FALL", tid, "person gira", frame, now)
@@ -149,7 +179,7 @@ class Pipeline:
         return frame
 
     def _calm_step(self, detections, fall_ids, fight_ids, loiter_ids,
-                   abandon_ids, people, is_crowd, frame, now):
+                   abandon_ids, people, is_crowd, frame, now, level="NONE"):
         """Run the M1..M4 chain and stash the evidence record in self.stats."""
         # M1: per-frame pose reliability, averaged over the people driving a cue
         drivers = set(fall_ids) | set(fight_ids) | set(loiter_ids)
@@ -176,6 +206,56 @@ class Pipeline:
                     f.write(decision.to_json() + "\n")
             except OSError:
                 pass
+
+        if self.calm_auto:
+            self._calm_autocal_step(decision.p, level, now)
+
+    def _calm_autocal_step(self, p, level, now):
+        """
+        M4 self-calibration: collect an assumed-normal p-stream after install
+        (or after each recalibration cycle) and auto-fit the alarm-budget
+        threshold once enough hours are in -- no manual harness run needed to
+        get a real, budgeted deployment on a new site.
+
+        Safeguard: frames where the ORIGINAL weighted-sum fusion already
+        called HIGH are excluded from the buffer, so a real incident during
+        warm-up doesn't quietly widen the alarm threshold. This does not
+        replace real calibration data (M3 still needs true incident labels
+        and is not touched here) -- it only keeps the M4 budget honest with
+        zero operator effort.
+        """
+        if not self._calm_collecting:
+            return
+        if level != "HIGH":
+            self._calm_buf.append(p)
+
+        elapsed_hours = (now - self._calm_buf_start) / 3600.0
+        if elapsed_hours < self._calm_collect_hours:
+            return
+        if len(self._calm_buf) < 30:
+            # not enough surviving (non-HIGH) frames to fit anything sane --
+            # keep collecting instead of certifying on a tiny/degenerate sample
+            self._calm_buf_start = now
+            return
+
+        result = self.calm.set_threshold_from_normal_stream(
+            self._calm_buf, hours=elapsed_hours)
+        print(f"[calm] auto-calibrated M4 after {elapsed_hours:.2f} normal-hours: "
+              f"tau={result.tau:.3f}  {result.guarantee}")
+        try:
+            tmp = self._calm_state_file + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(self.calm.state_dict(), f)
+            os.replace(tmp, self._calm_state_file)
+        except OSError:
+            pass
+
+        self._calm_buf = []
+        self._calm_buf_start = now
+        if self.calm_recal_hours > 0:
+            self._calm_collect_hours = self.calm_recal_hours
+        else:
+            self._calm_collecting = False
 
     def _draw_skeleton(self, frame, kp):
         if kp is None:

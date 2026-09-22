@@ -122,3 +122,14 @@ calm:
   fallback_tau: 0.60               # threshold used until M3/M4 have been fitted
   band_medium: 0.40                # p bands for UI parity with src/fusion.py levels
   band_high: 0.70
+
+  # ---- Auto-calibration (M4 only — deploy anywhere with zero manual setup) ----
+  # M4 (alarm budget) only needs a stream of CONFIRMED-NORMAL footage, no
+  # incident labels -- so the pipeline can collect it itself after install and
+  # self-calibrate the alarm threshold for THIS site, no research harness run
+  # needed. M3 (probability calibration) genuinely needs real incident labels
+  # and CANNOT be auto-fit honestly from zero data -- it stays on the raw-belief
+  # fallback until you run calm's offline calibration on labelled footage.
+  auto_calibrate: true             # true = self-calibrate M4 after install, no manual step
+  warmup_hours: 1.0                # how much "assumed normal" footage to collect first
+  recalibrate_every_hours: 24.0    # 0 = calibrate once and stop; >0 = keep refreshing tau

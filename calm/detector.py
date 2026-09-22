@@ -95,6 +95,7 @@ class CalmVAD:
         self._rc_result: RiskControlResult | None = None
         self.tau = float(c.get("fallback_tau", 0.6))          # used until M4 runs
         self._budgeted = False
+        self._loaded_guarantee: str | None = None              # set by load_state()
 
         # banding for UI parity with src/fusion.py
         self.band_med = float(c.get("band_medium", 0.4))
@@ -158,6 +159,34 @@ class CalmVAD:
             ts=now,
         )
 
+    # ------------------------------------------------------------------ persistence
+    # Only M4's outcome (tau + budget) is saved -- that's the only part
+    # auto-calibration ever fits. M3 (the belief->probability calibrator)
+    # still needs a manual offline fit on labelled data and is never
+    # silently persisted/assumed here.
+    def state_dict(self) -> dict:
+        return {
+            "tau": self.tau,
+            "budgeted": self._budgeted,
+            "beta": self.beta,
+            "delta": self.delta,
+            "fps": self.fps,
+            "calib_hours": self._rc_result.calib_hours if self._rc_result else None,
+            "guarantee": self._rc_result.guarantee if self._rc_result else None,
+        }
+
+    def load_state(self, d: dict) -> None:
+        if not d:
+            return
+        self.tau = float(d.get("tau", self.tau))
+        self._budgeted = bool(d.get("budgeted", self._budgeted))
+        self.beta = float(d.get("beta", self.beta))
+        self.delta = float(d.get("delta", self.delta))
+        if self._budgeted:
+            self._loaded_guarantee = d.get("guarantee") or (
+                f"restored from a previous auto-calibration run "
+                f"(tau={self.tau:.3f}, beta={self.beta:g}/h, delta={self.delta:g})")
+
     # ------------------------------------------------------------------ introspection
     def summary(self) -> dict:
         return {
@@ -167,5 +196,7 @@ class CalmVAD:
             "tau": round(self.tau, 4),
             "beta_faph": self.beta,
             "delta": self.delta,
-            "guarantee": self._rc_result.guarantee if self._rc_result else "none (fallback tau)",
+            "guarantee": (self._rc_result.guarantee if self._rc_result
+                          else self._loaded_guarantee if self._loaded_guarantee
+                          else "none (fallback tau)"),
         }
