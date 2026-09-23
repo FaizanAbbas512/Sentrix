@@ -125,6 +125,35 @@ def _fit_sklearn(kind, X, y):
 
 
 # --------------------------------------------------------------------------- #
+#  calib / test split                                                        #
+# --------------------------------------------------------------------------- #
+def split_calib_test(clips):
+    """
+    The exact calib/test partition run() uses, pulled out so other scripts
+    (e.g. calm/run_scene_autotune_eval.py) can reproduce IDENTICAL splits
+    without copy-pasting this logic -- important when something downstream
+    (like a scene-adaptive cue tuner) must be proven to never see the test
+    split: it has to call this same function, not a hand-rolled one.
+
+    clips must already be non-empty / non-zero-frame (run() filters those
+    before calling this; callers that skip run() should do the same).
+    """
+    calib = [c for c in clips if c.split == "calib"]
+    test = [c for c in clips if c.split == "test"]
+    if not test:
+        test = [c for c in clips if c.split != "calib"] or clips
+    # M3 needs BOTH classes in the calibration split; M4 needs normal-only.
+    if not calib or not any(c.gt_intervals for c in calib) or not any(not c.gt_intervals for c in calib):
+        norm = [c for c in test if not c.gt_intervals]
+        anom = [c for c in test if c.gt_intervals]
+        carve = norm[: max(1, len(norm) // 3)] + anom[: max(1, len(anom) // 3)]
+        calib = list({c.name: c for c in (calib + carve)}.values())
+        calib_names = {c.name for c in calib}          # Clip holds numpy arrays,
+        test = [c for c in test if c.name not in calib_names] or test  # so compare by name, not `in`
+    return calib, test
+
+
+# --------------------------------------------------------------------------- #
 #  run                                                                       #
 # --------------------------------------------------------------------------- #
 def run(clips, cfg, tag="synthetic", budgets=(2.0, 5.0, 10.0),
@@ -138,18 +167,7 @@ def run(clips, cfg, tag="synthetic", budgets=(2.0, 5.0, 10.0),
         raise SystemExit("[harness] no clips with frames left to evaluate")
 
     fps = clips[0].fps
-    calib = [c for c in clips if c.split == "calib"]
-    test = [c for c in clips if c.split == "test"]
-    if not test:
-        test = [c for c in clips if c.split != "calib"] or clips
-    # M3 needs BOTH classes in the calibration split; M4 needs normal-only.
-    if not calib or not any(c.gt_intervals for c in calib) or not any(not c.gt_intervals for c in calib):
-        norm = [c for c in test if not c.gt_intervals]
-        anom = [c for c in test if c.gt_intervals]
-        carve = norm[: max(1, len(norm) // 3)] + anom[: max(1, len(anom) // 3)]
-        calib = list({c.name: c for c in (calib + carve)}.values())
-        calib_names = {c.name for c in calib}          # Clip holds numpy arrays,
-        test = [c for c in test if c.name not in calib_names] or test  # so compare by name, not `in`
+    calib, test = split_calib_test(clips)
 
     # ---- score every clip, with and without M1 ----------------------------
     scored = {c.name: {"clip": c,
