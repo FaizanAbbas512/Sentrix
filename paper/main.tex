@@ -902,6 +902,19 @@ as cycling or vehicle intrusion fall outside them, as for
 \cite{yoloposeclip2026}. The fusion layer is cue-agnostic and could take on
 additional cue types without redesigning M2--M4, but we have not built or
 evaluated any.
+\emph{Fixed cue thresholds do not appear to be the bottleneck.} The five
+cues' thresholds (e.g.\ \texttt{loitering.dwell\_seconds},
+\texttt{crowd.threshold}, \texttt{fight.proximity}) are fixed constants,
+tuned once rather than adapted per site; we built and tested a
+scene-adaptive variant that learns them from a site's own confirmed-normal
+footage statistics only (\texttt{calm/scene\_autotune.py}, no anomaly
+labels needed, so it is deployable the same way M4 self-calibrates). Three
+of five benchmark releases have no fully-normal clip to learn from at all;
+on the two that do, the learned thresholds moved substantially but changed
+frame AUC by $+0.0005$ (UBnormal) and $-0.0053$ (NWPU-Campus), with event
+$F_1$ unchanged in both. We report this honestly rather than claim a win:
+whatever limits detection on these benchmarks, it is not simply that our
+threshold constants are mistuned.
 \emph{Exchangeability.} Learn-then-Test assumes the calibration and deployment
 normal streams are exchangeable; domain shift can break the guarantee, which
 we treat as a measured outcome rather than an assumption.
