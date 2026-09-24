@@ -77,7 +77,8 @@ def _split_like_harness(clips):
 
 def run_external(clips, scores_by_clip, cfg=None, tag="external",
                   label="external baseline", budgets=(2.0, 5.0, 10.0),
-                  recalls=(0.7, 0.8, 0.9), delta=0.05, outdir="results"):
+                  recalls=(0.7, 0.8, 0.9), delta=0.05, outdir="results",
+                  drop_mismatched=False):
     cfg = cfg or {}
     empty = [c.name for c in clips if c.n_frames == 0]
     if empty:
@@ -89,12 +90,31 @@ def run_external(clips, scores_by_clip, cfg=None, tag="external",
         raise SystemExit(
             f"[external_scores] {len(missing)} clip(s) have no external score "
             f"(name mismatch between --clips and --scores?): {missing[:10]}")
-    bad_len = [c.name for c in clips if len(scores_by_clip[c.name]) != c.n_frames]
-    if bad_len:
+    bad_len = {c.name: (c.n_frames, len(scores_by_clip[c.name])) for c in clips
+               if len(scores_by_clip[c.name]) != c.n_frames}
+    dropped_note = ""
+    if bad_len and not drop_mismatched:
+        sample = list(bad_len.items())[:10]
         raise SystemExit(
             f"[external_scores] {len(bad_len)} clip(s) have a score array whose "
             f"length != n_frames (a silent misalignment would corrupt every "
-            f"metric below, so this is fatal, not a warning): {bad_len[:10]}")
+            f"metric below, so this is fatal, not a warning): "
+            f"{[(n, f'ours={a} stgnf={b}') for n, (a, b) in sample]}\n"
+            f"Re-run with --drop-mismatched to EXCLUDE these clips from the "
+            f"comparison (not force-align them) if this is a known, real "
+            f"frame-count discrepancy between the external tool's own pose "
+            f"files and this project's ground-truth frame masks, not a bug.")
+    if bad_len and drop_mismatched:
+        print(f"[external_scores] dropping {len(bad_len)} clip(s) with a real "
+              f"frame-count mismatch between our ground truth and the external "
+              f"tool's own score length (excluded, not force-aligned): "
+              f"{[(n, f'ours={a} stgnf={b}') for n, (a, b) in list(bad_len.items())[:10]]}"
+              f"{' ...' if len(bad_len) > 10 else ''}")
+        clips = [c for c in clips if c.name not in bad_len]
+        dropped_note = (f" {len(bad_len)} of the original clip set were excluded "
+                         f"due to a frame-count mismatch between this project's "
+                         f"ground truth and the external tool's own score length "
+                         f"(not force-aligned): {sorted(bad_len.keys())}.")
     if not clips:
         raise SystemExit("[external_scores] no clips with frames left to evaluate")
 
@@ -182,7 +202,8 @@ def run_external(clips, scores_by_clip, cfg=None, tag="external",
         "note": ("M1/M4/B0-B2 are CALM-VAD-specific and not evaluated for an opaque "
                  "external score; only frame AUC / event-F1 / FAPH / ECE are reported, "
                  "computed with the same calib/test split and M3 calibration rule as "
-                 "calm.harness.run() so these numbers are comparable to its output."),
+                 "calm.harness.run() so these numbers are comparable to its output."
+                 + dropped_note),
     }
     os.makedirs(outdir, exist_ok=True)
     with open(os.path.join(outdir, f"calm_report_{tag}.json"), "w", encoding="utf-8") as f:
@@ -241,6 +262,12 @@ def main():
     ap.add_argument("--tag", default=None)
     ap.add_argument("--label", default="external baseline")
     ap.add_argument("--config", default="config.yaml")
+    ap.add_argument("--drop-mismatched", action="store_true",
+                     help="EXCLUDE (not force-align) any clip whose external score "
+                          "array length != our n_frames. Off by default -- a length "
+                          "mismatch is fatal unless you explicitly opt into dropping "
+                          "those specific clips, and the dropped clip names are always "
+                          "printed and recorded in the report's note field.")
     args = ap.parse_args()
 
     from . import datasets as D
@@ -253,7 +280,8 @@ def main():
         with open(args.config, "r", encoding="utf-8") as f:
             cfg = yaml.safe_load(f)
 
-    run_external(clips, scores_by_clip, cfg, tag=tag, label=args.label)
+    run_external(clips, scores_by_clip, cfg, tag=tag, label=args.label,
+                 drop_mismatched=args.drop_mismatched)
 
 
 if __name__ == "__main__":
