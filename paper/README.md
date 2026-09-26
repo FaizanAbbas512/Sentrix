@@ -1,12 +1,13 @@
 # CALM-VAD — manuscript
 
-LaTeX source **and a compiled `main.pdf`** (10 pages, IEEEtran, clean build —
+LaTeX source **and a compiled `main.pdf`** (IEEEtran, clean build —
 `\draftmodefalse`). Method, related work, problem formulation, and analysis
 are fully written. **All five** planned benchmarks have real results in the
 text and tables (ShanghaiTech, UBnormal, CHAD, Avenue, NWPU-Campus),
 including B4 and the fusion- and calibration-variant ablation sweeps (Tables
-VII-VIII, §VI-E), the full 20-pair cross-dataset generalisation matrix
-across all five (Table IX, §VI-F), and two real qualitative evidence-record
+VII-VIII), a real B3 (STG-NF) reproduction on the two benchmarks it
+officially supports (Table IX), the full 20-pair cross-dataset generalisation
+matrix across all five (Table X), and two real qualitative evidence-record
 panels with real Avenue video snapshots (Fig. 3). Every `refs.bib` citation
 has been individually verified against its real source, including author
 names (no entry cites "Anonymous"). `main.pdf` was compiled and visually
@@ -14,6 +15,29 @@ checked on this machine (MiKTeX), not fabricated. No `\pend{}` marker in
 `main.tex` names an unresolved benchmark claim any more — the only three
 left are the generic draft-mode legend text (inert while
 `\draftmodefalse`).
+
+**B3 external baseline, completed 2026-09-26**: obtained STG-NF's own
+released scores for ShanghaiTech and UBnormal (the two benchmarks it
+officially supports) and scored them through `calm/external_scores.py`,
+which wraps an opaque external score in the identical M3 calibration fit and
+deployable-evaluation protocol used everywhere else in this paper (new
+CLI, already present in `calm/`). Real, honest finding, not a favourable
+cherry-pick: STG-NF discriminates far better than CALM-VAD on frame AUC
+(0.840 vs. 0.552 ShanghaiTech; 0.721 vs. 0.538 UBnormal, as expected for a
+trained density model vs. untrained hand-specified rules), but the *same*
+isotonic map that calibrates CALM-VAD's own belief also substantially
+calibrates STG-NF's raw score (ECE 0.442→0.153 ShanghaiTech; 0.506→0.072
+UBnormal) — evidence the calibration/protocol contribution is not specific
+to our own fusion output, reported alongside the honest caveat that it
+closes less of the gap than for our own belief. 26/107 ShanghaiTech and
+18/211 UBnormal clips were excluded for a frame-count mismatch between our
+GT and STG-NF's score length (not force-aligned; named in the report). New
+§VI-F "Comparison to a published external baseline (B3)" and Table IX
+(`tables/b3_external.tex`); the raw run artifacts
+(`calm_report_stgnf_{shanghaitech,ubnormal}.{json,txt}`,
+`{shanghaitech,ubnormal}_raw_scores.json`) live in the gitignored
+`results/`, same convention as every other benchmark's source-of-truth
+files.
 
 **NWPU-Campus, completed 2026-09-20**: ran for real on Colab (T4 GPU, batched
 extraction to fit a 64GB disk budget, `colab/calm_vad_nwpu_colab.ipynb`), all
@@ -65,8 +89,9 @@ tables/risk_control_ubnormal.tex Table V — UBnormal M4, boosted normal hours (
 tables/cross_benchmark.tex    Table VI   — all 5 datasets side by side — real
 tables/ablation_fusion.tex    Table VII  — Dempster vs. noisy-OR vs. B4, all 5 datasets — real
 tables/ablation_calibration.tex Table VIII — isotonic vs. Platt vs. temperature ECE, all 5 datasets — real
-tables/cross_dataset.tex      Table IX   — 20-pair cross-dataset generalisation, all 5 datasets — real
-tables/cost.tex               Table X    — CPU latency incl. real front-end (YOLO11n-pose) timing — real
+tables/b3_external.tex        Table IX   — STG-NF (B3) reproduced on ShanghaiTech + UBnormal — real
+tables/cross_dataset.tex      Table X    — 20-pair cross-dataset generalisation, all 5 datasets — real
+tables/cost.tex               Table XI   — CPU latency incl. real front-end (YOLO11n-pose) timing — real
 figures/qual_examples.tex     Fig. 3     — 2 real evidence records + real Avenue snapshots — real
 ```
 
@@ -76,8 +101,11 @@ Colab run — `calm_report_nwpucampus.{json,txt}` and the 288MB merged
 every NWPU-Campus number in the paper.
 
 `results/` (git-ignored): every `calm_report_<tag>.{json,txt}`, including
-all 20 `calm_report_<fit>__to__<test>.json` cross-dataset reports — source
-of truth for Table IX.
+all 20 `calm_report_<fit>__to__<test>.json` cross-dataset reports (source of
+truth for Table X) and the B3 external-baseline reports
+`calm_report_stgnf_{shanghaitech,ubnormal}.{json,txt}` plus the raw score
+inputs `{shanghaitech,ubnormal}_raw_scores.json` (source of truth for
+Table IX).
 
 ## Compile
 
@@ -120,14 +148,17 @@ in a standard TeX Live / MiKTeX / Overleaf install.
    four. Real numbers throughout §V-§VIII and Tables VI-VIII.
 2. ~~Extend the cross-dataset matrix to NWPU-Campus~~ **Done for real,
    2026-09-20.** All 20 pairs (not just the 8 new ones) regenerated with
-   one documented, validated method — see the note above. Table IX,
-   §VI-F.
+   one documented, validated method — see the note above. Table X, §VI-G
+   (shifted from §VI-F/Table IX by the B3 subsection inserted ahead of it
+   on 2026-09-26 — see item 3).
 3. ~~Run B3 (published pose-density baseline) and B4 (single strongest cue)~~
-   B4 is run on all 5 datasets (Table VII). B3 is a deliberate, explained
-   decline, not an oversight: a fair B3 needs cloning and training STG-NF's
-   own normalizing-flow model end to end, a different scope of work from
-   evaluating our own back end (see the Baselines paragraph in §V); we cite
-   its published numbers rather than approximate a re-implementation.
+   **Done, 2026-09-26.** B4 is run on all 5 datasets (Table VII). B3 is
+   reproduced for real on the two benchmarks STG-NF officially supports
+   (ShanghaiTech, UBnormal) using its own released scores through
+   `calm/external_scores.py` (new §VI-F, Table IX) — training/fine-tuning
+   STG-NF ourselves, or extending B3 to CHAD/Avenue/NWPU-Campus (which it
+   does not support), remains out of scope, stated as such in the paper
+   rather than silently skipped.
 4. ~~Run the fusion-variant and calibration-variant ablation sweeps~~ Done
    on all 5 datasets, real numbers (§VI-E, Tables VII-VIII). Headline
    findings: Dempster vs. noisy-OR is inconsequential everywhere

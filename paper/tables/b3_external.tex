@@ -1,0 +1,32 @@
+% From "shanghaitech and ubnormal"/calm_report_stgnf_{shanghaitech,ubnormal}.{json,txt},
+% produced by calm/external_scores.py against STG-NF's own released scores
+% (STG-NF officially supports only these two of our five benchmarks).
+% CALM-VAD (full) rows repeated here from tables/main_results.tex and
+% tables/cross_benchmark.tex for direct comparison.
+\begin{table}[t]
+\centering
+\caption{STG-NF \cite{stgnf2023} (B3, its own released scores) run through the
+identical M3 calibration fit and deployable-evaluation protocol used
+throughout this paper. M1's reliability discount and M4's risk control are
+not applicable to an opaque external score (\S\ref{sec:b3}).}
+\label{tab:b3}
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.15}
+\footnotesize
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+Dataset & Method & AUC & $\bar F_1$ & ECE raw$\to$cal & FAPH (best) \\
+\midrule
+\multirow{2}{*}{ShanghaiTech} & STG-NF (B3)      & 0.840 & 0.543 & $0.442\to0.153$ & -- \\
+                              & CALM-VAD (full)  & 0.552 & 0.113 & $0.414\to0.020$ & -- \\
+\midrule
+\multirow{2}{*}{UBnormal}     & STG-NF (B3)      & 0.721 & 0.505 & $0.506\to0.072$ & $241.0$/h @ $0.7$ \\
+                              & CALM-VAD (full)  & 0.538 & 0.570 & $0.499\to0.046$ & $240.7$/h @ $0.7$ \\
+\bottomrule
+\end{tabular}
+\\[2pt]
+\raggedright\footnotesize $54$/$81$ ShanghaiTech and $128$/$192$ UBnormal
+clips were scored for STG-NF after excluding $26$ and $18$ clips respectively
+for a frame-count mismatch between our released ground truth and STG-NF's
+score length (not force-aligned; full clip lists in the released report).
+\end{table}

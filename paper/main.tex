@@ -529,12 +529,15 @@ comparison; implemented in \texttt{calm/harness.py} as
 \texttt{calm/}); \textbf{B1} logistic regression on the cue-strength vector;
 \textbf{B2} gradient-boosted trees on the same; \textbf{B4} the single
 strongest cue with no fusion at all (\S\ref{sec:ablations}).
-\textbf{B3} -- a published pose-density score such as STG-NF's own trained
-normalizing-flow model \cite{stgnf2023} -- is deliberately left out: a fair
-run would mean cloning and training that method's full codebase rather than
-consuming a released score file (none is published), which is a different
-scope of work from evaluating our own back end, so we cite its numbers
-rather than reproduce them and do not claim a head-to-head comparison.
+\textbf{B3}, a published pose-density model, is run wherever a fair
+comparison is possible without reproducing a full training pipeline:
+STG-NF's own released scores \cite{stgnf2023} for its two officially
+supported benchmarks (ShanghaiTech, UBnormal) are scored through the
+identical M3 calibration fit and deployable-evaluation protocol via
+\texttt{calm/external\_scores.py} (\S\ref{sec:b3}). STG-NF does not support
+CHAD, Avenue or NWPU-Campus, and we neither train nor fine-tune it ourselves
+on any benchmark -- doing so would be a different scope of work from
+evaluating our own decision layer -- so no B3 entry appears for those three.
 
 \paragraph{Ablations}
 $-$M1 (no reliability discount) is run as a separate stream on every dataset.
@@ -787,6 +790,56 @@ ablations}: a deployer of \method{} should keep isotonic as the default
 calibration map rather than substitute a parametric one for simplicity,
 since the cost of doing so is large and consistent on four of five real
 benchmarks, and a wash rather than a loss on the fifth.
+
+\subsection{Comparison to a published external baseline (B3)}
+\label{sec:b3}
+\S\ref{sec:setup} explains why B3 is not run as a general head-to-head
+detector comparison: a fair run needs cloning and training a published
+method's full codebase, a different scope of work from evaluating our own
+back end. We did, however, obtain STG-NF's own released scores
+\cite{stgnf2023} for its two officially supported benchmarks (ShanghaiTech,
+UBnormal; it does not support CHAD, Avenue or NWPU-Campus) and scored them
+with \texttt{calm/external\_scores.py}, which applies the identical M3
+calibration fit and reports frame AUC, event $\bar F_1$, $\faph$ and $\ece$
+under the same calib/test protocol as \texttt{calm.harness.run()} -- M1's
+reliability discount and M4's risk control do not apply, since both are
+defined over fused, reliability-aware multi-cue belief that a single opaque
+density score does not expose. \Cref{tab:b3} reports the result; $26$ of
+ShanghaiTech's $107$ and $18$ of UBnormal's $211$ official test clips were
+excluded for a frame-count mismatch between our released ground truth and
+STG-NF's score length (listed by name in the released report; not
+force-aligned).
+
+\input{tables/b3_external}
+
+Two findings, both expected, and both worth stating plainly rather than
+downplaying. \textbf{STG-NF discriminates far better than CALM-VAD on the
+metric it was trained for}: frame AUC of $0.840$ vs.\ $0.552$ on
+ShanghaiTech and $0.721$ vs.\ $0.538$ on UBnormal -- unsurprising, since
+STG-NF is a normalizing flow trained end-to-end on each benchmark's own
+normal-stream density, while CALM-VAD's five cues are untrained,
+hand-specified rules evaluated identically on every benchmark. This paper's
+contribution is not proposed as a frame-AUC improvement over such methods
+(\S\ref{sec:limits}), and this comparison confirms rather than contradicts
+that framing. \textbf{The M3 calibration layer generalizes to an external,
+opaque score, though less effectively than to CALM-VAD's own fused belief}:
+STG-NF's raw score is, coincidentally, almost as miscalibrated as our own
+raw belief on both benchmarks ($\ece=0.442$ vs.\ our $0.414$ on
+ShanghaiTech; $0.506$ vs.\ our $0.499$ on UBnormal), and the identical
+isotonic map lowers it substantially on both ($0.442\!\to\!0.153$;
+$0.506\!\to\!0.072$), demonstrating that the calibration and
+deployable-evaluation contributions are not specific to our own fusion
+output. It does not close as far as it does for CALM-VAD's own belief
+($0.020$ and $0.046$ after calibration), which we attribute to STG-NF's
+score being an unbounded log-likelihood rather than a quantity already
+loosely scaled toward $[0,1]$ by construction -- isotonic regression can
+still monotonically remap it, but with less exploitable structure from the
+same calibration-split size. Alarm load at the one recall level both
+methods reach on UBnormal is, coincidentally, almost identical ($241.0$/h
+STG-NF vs.\ $240.7$/h CALM-VAD at $\rho{=}0.7$) despite the large AUC gap,
+suggesting that on this benchmark the achievable FAPH ceiling is set more by
+UBnormal's own anomaly density and confirmed-normal scarcity
+(\S\ref{sec:m4} results) than by which detector produces the ranking.
 
 \subsection{Cross-dataset degradation}
 \input{tables/cross_dataset}
